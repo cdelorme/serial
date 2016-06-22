@@ -12,7 +12,7 @@ type ReadStream struct {
 
 func (self *ReadStream) SerializeString(in *string) error {
 	var l int64
-	if e := binary.Read(self, binary.LittleEndian, &l); e != nil {
+	if e := binary.Read(self, ByteOrder, &l); e != nil {
 		return e
 	}
 
@@ -28,7 +28,7 @@ func (self *ReadStream) SerializeString(in *string) error {
 
 func (self *ReadStream) SerializeInt(in *int) error {
 	var l int64
-	if e := binary.Read(self, binary.LittleEndian, &l); e != nil {
+	if e := binary.Read(self, ByteOrder, &l); e != nil {
 		return e
 	}
 
@@ -38,12 +38,11 @@ func (self *ReadStream) SerializeInt(in *int) error {
 }
 
 func (self *ReadStream) Read(p []byte) (int, error) {
-	if self.position >= len(self.Data) {
-		return 0, io.EOF
+	if len(p)+self.position <= len(self.Data) {
+		self.position += len(p)
+		return copy(p, self.Data[self.position-len(p):self.position]), nil
 	}
-	p[0] = self.Data[self.position]
-	self.position++
-	return 1, nil
+	return 0, io.EOF
 }
 
 func (self *ReadStream) Reset() {

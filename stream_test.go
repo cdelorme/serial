@@ -57,6 +57,7 @@ func TestStreamInt(t *testing.T) {
 	var i int
 	r := ReadStream{}
 	if e := r.SerializeInt(&i); e == nil {
+		t.Logf("Error: %s\n", e)
 		t.FailNow()
 	}
 
@@ -64,7 +65,7 @@ func TestStreamInt(t *testing.T) {
 	r.Reset()
 	r.Data = w.Data
 	if e := r.SerializeInt(&i); e != nil || i != o {
-		t.Logf("%s\n", e)
+		t.Logf("Error Natural: %s\n", e)
 		t.FailNow()
 	}
 }
