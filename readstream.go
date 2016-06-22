@@ -16,12 +16,11 @@ func (self *ReadStream) SerializeString(in *string) error {
 		return e
 	}
 
-	if self.position+int(l)-1 >= len(self.Data) {
-		return io.EOF
+	p := make([]byte, l)
+	if _, e := self.Read(p); e != nil {
+		return e
 	}
-
-	*in = string(self.Data[self.position : self.position+int(l)])
-	self.position += int(l)
+	*in = string(p)
 
 	return nil
 }

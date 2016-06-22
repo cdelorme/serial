@@ -8,7 +8,7 @@ type WriteStream struct {
 
 func (self *WriteStream) SerializeString(out *string) error {
 	binary.Write(self, ByteOrder, int64(len(*out)))
-	self.Data = append(self.Data, []byte(*out)...)
+	self.Write([]byte(*out))
 	return nil
 }
 
