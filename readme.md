@@ -21,19 +21,22 @@ For maximum efficiency we deal with pointers to avoid extra memory allocation ov
 
 ## performance
 
-It is worth noting that one of the intended purposes of the `encoding/gob` package was efficient network traffic.  It is therefore pre-optimized.  Some important behaviors to note are that it ignores private struct fields, flattens pointers, and allocates space to define each data type.  Whether these are beneficial depends on the use-case, _but these are decisions made by the go team so I have to assume most are beneficial._
+I tried a few things:
 
-While my plan is to iterate for efficiency, the first draft will be naive array length storage, use `LittleEndian` for its `ByteOrder` with no byte-packing; it is likely to be less efficiency and possibly slower (although this is not for certain).  As I release each major update, I will update the benchmarks here:
+- making `ByteOrder` a package variable and comparing `BigEndian` to `LittleEndian`
+- optimizing the `Read()` to grab the whole byte chunk by parameter length
+
+While this may not be the case over the network, the byte order made no difference to the size nor the performance.  _Still 61 bytes anywhere from 2200~2240ns regardless of ByteOrder used._  The go network stack should automatically convert the byte order to `BigEndian`, so this really wouldn't matter unless I bypassed the entire default `net` package.
+
+Optimizing the `Read` to use the length of the slice to read the bytes instead of one-byte-at-a-time was a huge win, dropping nearly 200~ns for the serialization approach.
+
+New Benchmarks:
 
 	$ go test -v -run=X -bench=.
 	PASS
-	BenchmarkGob-8      	  500000	      2418 ns/op
-	BenchmarkSerialize-8	 1000000	      2175 ns/op
-	ok  	github.com/cdelorme/go-udp-transport	3.448s
-
-_In complete opposition of my expectations, the gob library was not only slower than a custom serialization without any optimizations, but the bytes consumed were nearly half the gob solution (`61` vs `115`)._  I am a bit shocked since I expected a very different outcome.
-
-**With a bit of cleanup and optimization, it's possible to make serialize way faster and better!**
+	BenchmarkSerialize-8	 1000000	      1911 ns/op
+	BenchmarkGob-8      	  500000	      2650 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	4.289s
 
 
 ## deficiencies
@@ -60,3 +63,4 @@ The next problem is organization of read and write stream in separate files does
 - [encoding/binary](https://golang.org/pkg/encoding/binary/)
 - [io](https://golang.org/pkg/io/)
 - [go slices usage and internals](https://blog.golang.org/go-slices-usage-and-internals)
+- [golang specification types](https://golang.org/ref/spec#Types)
