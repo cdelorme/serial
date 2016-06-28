@@ -106,7 +106,6 @@ func TestStreamInt(t *testing.T) {
 	// test write int32
 	w.Reset()
 	o = int(MaxInt32 - 1)
-	t.Logf("Storing: %d\n", o)
 	if e := w.SerializeInt(&o, int64(MaxInt32)); e != nil || w.Len() != 4 {
 		t.FailNow()
 	}
