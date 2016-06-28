@@ -27,12 +27,12 @@ func (self *WriteStream) SerializeInt(out *int, maxSize int64) error {
 	}
 
 	switch {
-	case maxSize == 0 || maxSize > int64(MaxUint32):
+	case maxSize == 0 || maxSize > int64(MaxInt32):
 		return self.SerializeInt64(&l)
-	case maxSize > int64(MaxUint16):
+	case maxSize > int64(MaxInt16):
 		el := int32(l)
 		return self.SerializeInt32(&el)
-	case maxSize > int64(MaxUint8):
+	case maxSize > int64(MaxInt8):
 		el := int16(l)
 		return self.SerializeInt16(&el)
 	default:

@@ -26,7 +26,7 @@ func (self *ReadStream) SerializeString(in *string, maxSize uint64) error {
 
 func (self *ReadStream) SerializeInt(in *int, maxSize int64) error {
 	switch {
-	case maxSize == 0 || maxSize > int64(MaxUint32):
+	case maxSize == 0 || maxSize > int64(MaxInt32):
 		var l int64
 		if e := self.SerializeInt64(&l); e != nil {
 			return e
@@ -35,7 +35,7 @@ func (self *ReadStream) SerializeInt(in *int, maxSize int64) error {
 			return MaxSizeExceeded
 		}
 		*in = int(l)
-	case maxSize > int64(MaxUint16):
+	case maxSize > int64(MaxInt16):
 		var l int32
 		if e := self.SerializeInt32(&l); e != nil {
 			return e
@@ -44,7 +44,7 @@ func (self *ReadStream) SerializeInt(in *int, maxSize int64) error {
 			return MaxSizeExceeded
 		}
 		*in = int(l)
-	case maxSize > int64(MaxUint8):
+	case maxSize > int64(MaxInt8):
 		var l int16
 		if e := self.SerializeInt16(&l); e != nil {
 			return e
