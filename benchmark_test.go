@@ -22,8 +22,8 @@ var dec = gob.NewDecoder(&network)
 
 func TestSizes(t *testing.T) {
 	benchEntity.Serialize(benchWriter)
-	t.Logf("Serialized: %d\n", len(benchWriter.Data))
-	benchWriter.Data = []byte{}
+	t.Logf("Serialized: %d\n", benchWriter.Len())
+	benchWriter.Reset()
 
 	enc.Encode(benchEntity)
 	t.Logf("Gobbed: %d\n", len(network.Bytes()))
@@ -33,10 +33,10 @@ func TestSizes(t *testing.T) {
 func BenchmarkSerialize(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		benchEntity.Serialize(benchWriter)
-		benchReader.Reset()
-		benchReader.Data = benchWriter.Data
+		benchReader.Write(benchWriter.Bytes())
 		benchEntity.Serialize(benchReader)
-		benchWriter.Data = []byte{}
+		benchWriter.Reset()
+		benchReader.Reset()
 	}
 }
 

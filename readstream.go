@@ -1,26 +1,25 @@
 package transport
 
 import (
+	"bytes"
 	"encoding/binary"
-	"io"
 )
 
 type ReadStream struct {
-	position int
-	Data     []byte
+	bytes.Buffer
 }
 
 func (self *ReadStream) SerializeString(in *string) error {
-	var l int64
-	if e := binary.Read(self, ByteOrder, &l); e != nil {
+	var l int
+	if e := self.SerializeInt(&l); e != nil {
 		return e
 	}
 
-	p := make([]byte, l)
-	if _, e := self.Read(p); e != nil {
+	d := make([]byte, l)
+	if _, e := self.Read(d); e != nil {
 		return e
 	}
-	*in = string(p)
+	*in = string(d)
 
 	return nil
 }
@@ -34,16 +33,4 @@ func (self *ReadStream) SerializeInt(in *int) error {
 	*in = int(l)
 
 	return nil
-}
-
-func (self *ReadStream) Read(p []byte) (int, error) {
-	if len(p)+self.position <= len(self.Data) {
-		self.position += len(p)
-		return copy(p, self.Data[self.position-len(p):self.position]), nil
-	}
-	return 0, io.EOF
-}
-
-func (self *ReadStream) Reset() {
-	self.position = 0
 }

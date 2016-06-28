@@ -21,22 +21,24 @@ For maximum efficiency we deal with pointers to avoid extra memory allocation ov
 
 ## performance
 
-I tried a few things:
+This time I tried a few bigger changes:
 
-- making `ByteOrder` a package variable and comparing `BigEndian` to `LittleEndian`
-- optimizing the `Read()` to grab the whole byte chunk by parameter length
+- attempting to reuse existing `Read()`, `Write()`, and `SerializeInt()`
+- switching to `bytes.Buffer` from custom
 
-While this may not be the case over the network, the byte order made no difference to the size nor the performance.  _Still 61 bytes anywhere from 2200~2240ns regardless of ByteOrder used._  The go network stack should automatically convert the byte order to `BigEndian`, so this really wouldn't matter unless I bypassed the entire default `net` package.
+Attempting to re-use `Read()` very nearly added another 100ns back to the metrics, while a call to `Write()` was barely 5~ns added.  _While code reuse is appealing, this proves that it has a cost and my objective is efficiency so I'd like to find a way to avoid incurring that cost._
 
-Optimizing the `Read` to use the length of the slice to read the bytes instead of one-byte-at-a-time was a huge win, dropping nearly 200~ns for the serialization approach.
+I decided to try and use the `bytes.Buffer` instead of a custom `Read()`, `Write()` and byte array with position handler.  Not only does this reduce code, it replaces it with existing reliable built-in code.  _It also got us the desired code reuse without the performance hit we had from before._
 
-New Benchmarks:
+The resulting benchmarks:
 
 	$ go test -v -run=X -bench=.
 	PASS
-	BenchmarkSerialize-8	 1000000	      1911 ns/op
-	BenchmarkGob-8      	  500000	      2650 ns/op
-	ok  	github.com/cdelorme/go-udp-transport	4.289s
+	BenchmarkSerialize-8	 1000000	      1950 ns/op
+	BenchmarkGob-8      	  500000	      2385 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	4.191s
+
+_The benchmarks may not do justice to the serialization performance since I had extra steps to copy the data from the writer to the reader per operation, which theoretically would not be incurred in normal flow.  The `gob` library uses a pointer which yields a shared buffer, but the pointer dereferencing may be what reduces the `gob` performance._
 
 
 ## deficiencies

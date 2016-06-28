@@ -1,22 +1,21 @@
 package transport
 
-import "encoding/binary"
+import (
+	"bytes"
+	"encoding/binary"
+)
 
 type WriteStream struct {
-	Data []byte
+	bytes.Buffer
 }
 
 func (self *WriteStream) SerializeString(out *string) error {
-	binary.Write(self, ByteOrder, int64(len(*out)))
-	self.Write([]byte(*out))
-	return nil
+	b := []byte(*out)
+	l := len(b)
+	self.SerializeInt(&l)
+	return binary.Write(self, ByteOrder, b)
 }
 
 func (self *WriteStream) SerializeInt(out *int) error {
 	return binary.Write(self, ByteOrder, int64(*out))
-}
-
-func (self *WriteStream) Write(p []byte) (int, error) {
-	self.Data = append(self.Data, p...)
-	return len(p), nil
 }

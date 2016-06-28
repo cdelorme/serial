@@ -11,30 +11,30 @@ func TestEntity(t *testing.T) {
 	name := "Casey"
 
 	// serialize data to write stream
-	e := Entity{Name: name}
+	e := Entity{Name: name, Health: [2]int{100, 1000}}
 	w := &WriteStream{}
-	if err := e.Serialize(w); err != nil || len(w.Data) == 0 {
+	if err := e.Serialize(w); err != nil || w.Len() == 0 {
 		t.FailNow()
 	}
 
 	// de-serialize from read stream using previous write stream's data
 	i := Entity{}
-	r := &ReadStream{Data: w.Data}
+	r := &ReadStream{Buffer: w.Buffer}
 	if err := i.Serialize(r); err != nil || i.Name != name {
 		t.FailNow()
 	}
 
 	// force error with invalid data
 	r.Reset()
-	r.Data = w.Data[:9]
+	r.Write(w.Bytes()[:8])
 	if err := i.Serialize(r); err == nil {
 		t.FailNow()
 	}
 
 	// verify that we never successfully parse partial integers
-	for n := 0; n < len(w.Data); n++ {
+	for n := 0; n < w.Len(); n++ {
 		r.Reset()
-		r.Data = w.Data[:n]
+		r.Write(w.Bytes()[:n])
 		if e := i.Serialize(r); e == nil {
 			t.FailNow()
 		}
