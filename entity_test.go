@@ -11,7 +11,7 @@ func TestEntity(t *testing.T) {
 	name := "Casey"
 
 	// serialize data to write stream
-	e := Entity{Name: name, Health: [2]int{100, 1000}}
+	e := Entity{Name: name, Health: [2]uint16{100, 1000}}
 	w := &WriteStream{}
 	if err := e.Serialize(w); err != nil || w.Len() == 0 {
 		t.FailNow()

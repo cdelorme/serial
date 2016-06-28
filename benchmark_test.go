@@ -8,9 +8,9 @@ import (
 
 var benchEntity = Entity{
 	Name:    "Casey",
-	Health:  [2]int{100, 100},
-	Mana:    [2]int{50, 50},
-	Stamina: [2]int{75, 75},
+	Health:  [2]uint16{100, 100},
+	Mana:    [2]uint16{50, 50},
+	Stamina: [2]uint16{75, 75},
 }
 
 var benchReader = &ReadStream{}

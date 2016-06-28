@@ -1,35 +1,34 @@
 package transport
 
 const MaxSizeName uint64 = 255
-const MaxSizeStats int64 = 10000
 
 type Entity struct {
 	Name    string
-	Health  [2]int
-	Mana    [2]int
-	Stamina [2]int
+	Health  [2]uint16
+	Mana    [2]uint16
+	Stamina [2]uint16
 }
 
 func (self *Entity) Serialize(s Stream) error {
 	if e := s.SerializeString(&self.Name, MaxSizeName); e != nil {
 		return e
 	}
-	if e := s.SerializeInt(&self.Health[0], MaxSizeStats); e != nil {
+	if e := s.SerializeUint16(&self.Health[0]); e != nil {
 		return e
 	}
-	if e := s.SerializeInt(&self.Health[1], MaxSizeStats); e != nil {
+	if e := s.SerializeUint16(&self.Health[1]); e != nil {
 		return e
 	}
-	if e := s.SerializeInt(&self.Mana[0], MaxSizeStats); e != nil {
+	if e := s.SerializeUint16(&self.Mana[0]); e != nil {
 		return e
 	}
-	if e := s.SerializeInt(&self.Mana[1], MaxSizeStats); e != nil {
+	if e := s.SerializeUint16(&self.Mana[1]); e != nil {
 		return e
 	}
-	if e := s.SerializeInt(&self.Stamina[0], MaxSizeStats); e != nil {
+	if e := s.SerializeUint16(&self.Stamina[0]); e != nil {
 		return e
 	}
-	if e := s.SerializeInt(&self.Stamina[1], MaxSizeStats); e != nil {
+	if e := s.SerializeUint16(&self.Stamina[1]); e != nil {
 		return e
 	}
 	return nil

@@ -18,6 +18,7 @@ const MaxInt64 = int64(MaxUint64 >> 1)
 type Stream interface {
 	SerializeString(*string, uint64) error
 	SerializeInt(*int, int64) error
+	SerializeUint16(*uint16) error
 }
 
 var ByteOrder = binary.LittleEndian
