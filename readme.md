@@ -24,18 +24,26 @@ For maximum efficiency we deal with pointers to avoid extra memory allocation ov
 I added a significant amount of code this time to try and optimize the space consumed:
 
 - added functions for deterministic types: float32/64, int8/16/32/64, uint8/16/32/64
+- added `MaxSize` parameter to `SerializeString()`, `SerializeInt()`, and `SerializeUint()`
 
 Since I did not (_yet_) modify the entity encoding I wasn't expecting a change to performance, but I ended up seeing a cost of around 10~30ns per operation.  _Fortunately adding code reuse did not appear to create any difference in performance._
 
-Resulting Benchmarks:
+By adding the new `MaxSize` parameter I expected to take a significant hit to performance, but also to achieve far better efficiency when storing data.  In addition, the parameter can be used to invoke a user-defined maximum accepted value, reducing extra load post-serialization.  _To my surprise the performance only jumped between 50~100ns per operation, still remaining around 400~ns faster than the `encoding/gob` implementation, but the size has now dropped by 75% bringing us to 1/6th the size of the `encoding/gob` results._
+
+Benchmarks with `MaxSize` modifications:
 
 	$ go test -v -run=X -bench=.
 	PASS
-	BenchmarkSerialize-8	 1000000	      1977 ns/op
-	BenchmarkGob-8      	  500000	      2376 ns/op
-	ok  	github.com/cdelorme/go-udp-transport	3.223s
+	BenchmarkSerialize-8	 1000000	      2089 ns/op
+	BenchmarkGob-8      	  500000	      2535 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	3.417s
 
-_This is after adding 96 lines of code (320 if we count tests)._
+New byte sizes per encoding method:
+
+	Serialized: 18
+	Gobbed: 115
+
+_This time we added a total of `126` lines; `307` if we count tests, possibly less it we omit the entity that exists for testing the library._
 
 
 ## problems

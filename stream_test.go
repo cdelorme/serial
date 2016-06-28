@@ -8,82 +8,263 @@ func TestStreamString(t *testing.T) {
 	t.Parallel()
 	out := "bananas"
 
-	// test encoding
+	// test encoding (default)
 	w := WriteStream{}
-	if e := w.SerializeString(&out); e != nil || w.Len() == 0 {
+	if e := w.SerializeString(&out, 0); e != nil || w.Len() == 0 {
+		t.FailNow()
+	}
+
+	// test optimized encoding
+	ow := WriteStream{}
+	if e := ow.SerializeString(&out, 255); e != nil || w.Len() <= ow.Len() {
+		t.FailNow()
+	}
+
+	// test max length safety
+	if e := ow.SerializeString(&out, 2); e == nil {
 		t.FailNow()
 	}
 
 	// test decode empty error
 	var in string
 	r := ReadStream{}
-	if e := r.SerializeString(&in); e == nil {
+	if e := r.SerializeString(&in, 0); e == nil {
 		t.FailNow()
 	}
 
 	// test decode partial error
 	r.Reset()
 	r.Write(w.Bytes()[:8])
-	if e := r.SerializeString(&in); e == nil {
-		t.Logf("%s\n", e)
+	if e := r.SerializeString(&in, 0); e == nil {
 		t.FailNow()
 	}
 
 	// test full decode
 	r.Buffer = w.Buffer
-	if e := r.SerializeString(&in); e != nil || out != in {
+	if e := r.SerializeString(&in, 0); e != nil || out != in {
 		t.FailNow()
 	}
 
 	// test write empty string
 	w.Reset()
 	var g string
-	if e := w.SerializeString(&g); e != nil || w.Len() == 0 {
+	if e := w.SerializeString(&g, 0); e != nil || w.Len() == 0 {
 		t.FailNow()
 	}
 }
 
 func TestStreamInt(t *testing.T) {
 	t.Parallel()
-	o := 12
+	r, w := ReadStream{}, WriteStream{}
+	var o, i int
 
-	// test writing an int
-	w := WriteStream{}
-	if e := w.SerializeInt(&o); e != nil || w.Len() == 0 {
+	// test read int64 no data
+	if e := r.SerializeInt(&i, MaxInt64); e == nil {
 		t.FailNow()
 	}
 
-	// test reading an int fail
-	var i int
-	r := ReadStream{}
-	if e := r.SerializeInt(&i); e == nil {
+	// test read int32 no data
+	if e := r.SerializeInt(&i, int64(MaxInt32)); e == nil {
 		t.FailNow()
 	}
 
-	// test reading an int
+	// test read int16 no data
+	if e := r.SerializeInt(&i, int64(MaxInt16)); e == nil {
+		t.FailNow()
+	}
+
+	// test read int8 no data
+	if e := r.SerializeInt(&i, int64(MaxInt8)); e == nil {
+		t.FailNow()
+	}
+
+	// test write exceeds max
+	o = 2
+	if e := w.SerializeInt(&o, 1); e == nil {
+		t.FailNow()
+	}
+
+	// test write int64
+	w.Reset()
+	o = int(MaxInt64 - 1)
+	if e := w.SerializeInt(&o, MaxInt64); e != nil || w.Len() != 8 {
+		t.Failed()
+	}
+
+	// test read int64 exceeds max
 	r.Buffer = w.Buffer
-	if e := r.SerializeInt(&i); e != nil || i != o {
+	if e := r.SerializeInt(&i, MaxInt64-2); e == nil {
+		t.FailNow()
+	}
+
+	// test read int64
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, MaxInt64); e != nil || i != o {
+		t.FailNow()
+	}
+
+	// test write int32
+	w.Reset()
+	o = int(MaxInt32 - 1)
+	t.Logf("Storing: %d\n", o)
+	if e := w.SerializeInt(&o, int64(MaxInt32)); e != nil || w.Len() != 4 {
+		t.FailNow()
+	}
+
+	// test read int32 exceeds max
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, int64(MaxInt32-2)); e == nil {
+		t.FailNow()
+	}
+
+	// test read int32
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, int64(MaxInt32)); e != nil {
+		t.FailNow()
+	}
+
+	// test write int16
+	w.Reset()
+	o = int(MaxInt16 - 1)
+	if e := w.SerializeInt(&o, int64(MaxInt16)); e != nil || w.Len() != 2 {
+		t.FailNow()
+	}
+
+	// test read int16 exceeds max
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, int64(MaxInt16-2)); e == nil {
+		t.FailNow()
+	}
+
+	// test read int16
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, int64(MaxInt16)); e != nil {
+		t.FailNow()
+	}
+
+	// test write int8
+	w.Reset()
+	o = int(MaxInt8 - 1)
+	if e := w.SerializeInt(&o, int64(MaxInt8)); e != nil || w.Len() != 1 {
+		t.FailNow()
+	}
+
+	// test read int8 exceeds max
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, int64(MaxInt8-2)); e == nil {
+		t.FailNow()
+	}
+
+	// test read int8
+	r.Buffer = w.Buffer
+	if e := r.SerializeInt(&i, int64(MaxInt8)); e != nil {
 		t.FailNow()
 	}
 }
 
 func TestStreamUint(t *testing.T) {
 	t.Parallel()
-	var o uint = 12
+	r, w := ReadStream{}, WriteStream{}
+	var o, i uint
 
-	w := WriteStream{}
-	if e := w.SerializeUint(&o); e != nil || w.Len() == 0 {
+	// test read uint64 no data
+	if e := r.SerializeUint(&i, MaxUint64); e == nil {
 		t.FailNow()
 	}
 
-	var i uint
-	r := ReadStream{}
-	if e := r.SerializeUint(&i); e == nil {
+	// test read uint32 no data
+	if e := r.SerializeUint(&i, uint64(MaxUint32)); e == nil {
 		t.FailNow()
 	}
 
+	// test read uint16 no data
+	if e := r.SerializeUint(&i, uint64(MaxUint16)); e == nil {
+		t.FailNow()
+	}
+
+	// test read uint8 no data
+	if e := r.SerializeUint(&i, uint64(MaxUint8)); e == nil {
+		t.FailNow()
+	}
+
+	// test write exceeds max
+	o = 2
+	if e := w.SerializeUint(&o, 1); e == nil {
+		t.FailNow()
+	}
+
+	// test write uint64
+	o = uint(MaxUint64 - 1)
+	if e := w.SerializeUint(&o, MaxUint64); e != nil {
+		t.Failed()
+	}
+
+	// test read uint64 exceeds max
 	r.Buffer = w.Buffer
-	if e := r.SerializeUint(&i); e != nil || i != o {
+	if e := r.SerializeUint(&i, MaxUint64-2); e == nil {
+		t.FailNow()
+	}
+
+	// test read uint64
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, MaxUint64); e != nil || i != o {
+		t.FailNow()
+	}
+
+	// test write uint32
+	w.Reset()
+	o = uint(MaxUint32 - 1)
+	if e := w.SerializeUint(&o, uint64(MaxUint32)); e != nil {
+		t.FailNow()
+	}
+
+	// test read uint32 exceeds max
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, uint64(MaxUint32-2)); e == nil {
+		t.FailNow()
+	}
+
+	// test read uint32
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, uint64(MaxUint32)); e != nil || i != o {
+		t.FailNow()
+	}
+
+	// test write uint16
+	w.Reset()
+	o = uint(MaxUint16 - 1)
+	if e := w.SerializeUint(&o, uint64(MaxUint16)); e != nil {
+		t.FailNow()
+	}
+
+	// test read uint16 exceeds max
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, uint64(MaxUint16-2)); e == nil {
+		t.FailNow()
+	}
+
+	// test read uint16
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, uint64(MaxUint16)); e != nil || i != o {
+		t.FailNow()
+	}
+
+	// test write uint8
+	w.Reset()
+	o = uint(MaxUint8 - 1)
+	if e := w.SerializeUint(&o, uint64(MaxUint8)); e != nil {
+		t.FailNow()
+	}
+
+	// test read uint8 exceeds max
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, uint64(MaxUint8-2)); e == nil {
+		t.FailNow()
+	}
+
+	// test read uint8
+	r.Buffer = w.Buffer
+	if e := r.SerializeUint(&i, uint64(MaxUint8)); e != nil || i != o {
 		t.FailNow()
 	}
 }
