@@ -9,21 +9,58 @@ type WriteStream struct {
 	bytes.Buffer
 }
 
-func (self *WriteStream) SerializeString(out *string) error {
+func (self *WriteStream) SerializeString(out *string, maxSize uint64) error {
 	b := []byte(*out)
-	l := len(b)
-	self.SerializeInt(&l)
+	l := uint(len(b))
+
+	if e := self.SerializeUint(&l, maxSize); e != nil {
+		return e
+	}
 	return binary.Write(self, ByteOrder, b)
 }
 
-func (self *WriteStream) SerializeInt(out *int) error {
+func (self *WriteStream) SerializeInt(out *int, maxSize int64) error {
 	l := int64(*out)
-	return self.SerializeInt64(&l)
+
+	if maxSize != 0 && l > maxSize {
+		return MaxSizeExceeded
+	}
+
+	switch {
+	case maxSize == 0 || maxSize > int64(MaxUint32):
+		return self.SerializeInt64(&l)
+	case maxSize > int64(MaxUint16):
+		el := int32(l)
+		return self.SerializeInt32(&el)
+	case maxSize > int64(MaxUint8):
+		el := int16(l)
+		return self.SerializeInt16(&el)
+	default:
+		el := int8(l)
+		return self.SerializeInt8(&el)
+	}
 }
 
-func (self *WriteStream) SerializeUint(out *uint) error {
+func (self *WriteStream) SerializeUint(out *uint, maxSize uint64) error {
 	l := uint64(*out)
-	return self.SerializeUint64(&l)
+
+	if maxSize > 0 && l > maxSize {
+		return MaxSizeExceeded
+	}
+
+	switch {
+	case maxSize == 0 || maxSize > uint64(MaxUint32):
+		return self.SerializeUint64(&l)
+	case maxSize > uint64(MaxUint16):
+		el := uint32(l)
+		return self.SerializeUint32(&el)
+	case maxSize > uint64(MaxUint8):
+		el := uint16(l)
+		return self.SerializeUint16(&el)
+	default:
+		el := uint8(l)
+		return self.SerializeUint8(&el)
+	}
 }
 
 func (self *WriteStream) SerializeInt8(out *int8) error {

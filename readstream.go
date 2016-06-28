@@ -9,9 +9,9 @@ type ReadStream struct {
 	bytes.Buffer
 }
 
-func (self *ReadStream) SerializeString(in *string) error {
-	var l int
-	if e := self.SerializeInt(&l); e != nil {
+func (self *ReadStream) SerializeString(in *string, maxSize uint64) error {
+	var l uint
+	if e := self.SerializeUint(&l, maxSize); e != nil {
 		return e
 	}
 
@@ -24,18 +24,90 @@ func (self *ReadStream) SerializeString(in *string) error {
 	return nil
 }
 
-func (self *ReadStream) SerializeInt(in *int) (e error) {
-	var l int64
-	e = self.SerializeInt64(&l)
-	*in = int(l)
-	return
+func (self *ReadStream) SerializeInt(in *int, maxSize int64) error {
+	switch {
+	case maxSize == 0 || maxSize > int64(MaxUint32):
+		var l int64
+		if e := self.SerializeInt64(&l); e != nil {
+			return e
+		}
+		if maxSize != 0 && l > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = int(l)
+	case maxSize > int64(MaxUint16):
+		var l int32
+		if e := self.SerializeInt32(&l); e != nil {
+			return e
+		}
+		if maxSize != 0 && int64(l) > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = int(l)
+	case maxSize > int64(MaxUint8):
+		var l int16
+		if e := self.SerializeInt16(&l); e != nil {
+			return e
+		}
+		if maxSize != 0 && int64(l) > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = int(l)
+	default:
+		var l int8
+		if e := self.SerializeInt8(&l); e != nil {
+			return e
+		}
+		if maxSize != 0 && int64(l) > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = int(l)
+	}
+
+	return nil
 }
 
-func (self *ReadStream) SerializeUint(in *uint) (e error) {
-	var l uint64
-	e = self.SerializeUint64(&l)
-	*in = uint(l)
-	return
+func (self *ReadStream) SerializeUint(in *uint, maxSize uint64) error {
+	switch {
+	case maxSize == 0 || maxSize > uint64(MaxUint32):
+		var l uint64
+		if e := self.SerializeUint64(&l); e != nil {
+			return e
+		}
+		if maxSize > 0 && l > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = uint(l)
+	case maxSize > uint64(MaxUint16):
+		var l uint32
+		if e := self.SerializeUint32(&l); e != nil {
+			return e
+		}
+		if maxSize > 0 && uint64(l) > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = uint(l)
+	case maxSize > uint64(MaxUint8):
+		var l uint16
+		if e := self.SerializeUint16(&l); e != nil {
+			return e
+		}
+		if maxSize > 0 && uint64(l) > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = uint(l)
+	default:
+		var l uint8
+		if e := self.SerializeUint8(&l); e != nil {
+			return e
+		}
+		if maxSize > 0 && uint64(l) > maxSize {
+			return MaxSizeExceeded
+		}
+		*in = uint(l)
+	}
+
+	return nil
 }
 
 func (self *ReadStream) SerializeInt8(in *int8) error {
