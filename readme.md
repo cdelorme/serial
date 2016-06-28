@@ -30,7 +30,7 @@ Attempting to re-use `Read()` very nearly added another 100ns back to the metric
 
 I decided to try and use the `bytes.Buffer` instead of a custom `Read()`, `Write()` and byte array with position handler.  Not only does this reduce code, it replaces it with existing reliable built-in code.  _It also got us the desired code reuse without the performance hit we had from before._
 
-The resulting benchmarks:
+The resulting benchmarks with 18 less lines of code:
 
 	$ go test -v -run=X -bench=.
 	PASS
