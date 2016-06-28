@@ -7,7 +7,7 @@ These are the goals:
 
 - demonstrate a minimalistic serialization implementation in go
 - compare performance & efficiency of `encoding/gob` vs minimalistic serialization implementation
-- identify deficiencies that could be surmounted with extra effort
+- identify problems that could be surmounted with extra effort
 
 
 ## implementation
@@ -16,46 +16,45 @@ Due to the implicit interfaces, we can easily mirror the serialization strategy 
 
 This strategy relies on matching function parameters for a read and write utility.
 
-For maximum efficiency we deal with pointers to avoid extra memory allocation overhead, while creating or reading from a byte array.
+For maximum efficiency we deal with pointers to avoid extra memory allocation overhead, while creating or reading from a byte array.  _The process of converting data into byte arrays for writing into a buffer requires allocations, so we aren't saving a whole lot by using pointers for writes._
 
 
 ## performance
 
-This time I tried a few bigger changes:
+I added a significant amount of code this time to try and optimize the space consumed:
 
-- attempting to reuse existing `Read()`, `Write()`, and `SerializeInt()`
-- switching to `bytes.Buffer` from custom
+- added functions for deterministic types: float32/64, int8/16/32/64, uint8/16/32/64
 
-Attempting to re-use `Read()` very nearly added another 100ns back to the metrics, while a call to `Write()` was barely 5~ns added.  _While code reuse is appealing, this proves that it has a cost and my objective is efficiency so I'd like to find a way to avoid incurring that cost._
+Since I did not (_yet_) modify the entity encoding I wasn't expecting a change to performance, but I ended up seeing a cost of around 10~30ns per operation.  _Fortunately adding code reuse did not appear to create any difference in performance._
 
-I decided to try and use the `bytes.Buffer` instead of a custom `Read()`, `Write()` and byte array with position handler.  Not only does this reduce code, it replaces it with existing reliable built-in code.  _It also got us the desired code reuse without the performance hit we had from before._
-
-The resulting benchmarks with 18 less lines of code:
+Resulting Benchmarks:
 
 	$ go test -v -run=X -bench=.
 	PASS
-	BenchmarkSerialize-8	 1000000	      1950 ns/op
-	BenchmarkGob-8      	  500000	      2385 ns/op
-	ok  	github.com/cdelorme/go-udp-transport	4.191s
+	BenchmarkSerialize-8	 1000000	      1977 ns/op
+	BenchmarkGob-8      	  500000	      2376 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	3.223s
 
-_The benchmarks may not do justice to the serialization performance since I had extra steps to copy the data from the writer to the reader per operation, which theoretically would not be incurred in normal flow.  The `gob` library uses a pointer which yields a shared buffer, but the pointer dereferencing may be what reduces the `gob` performance._
+_This is after adding 96 lines of code (320 if we count tests)._
 
 
-## deficiencies
+## problems
 
-One major efficiency problem is that go's default size integer (eg. `int`) has a variable size that isn't compatible with the `encoding/binary` package.  The conversion process from types to bytes and back simply can't deal with that type.
+One significant problem is that the `int` data type, a common default in go, does not have a deterministic size.  The result is that it cannot be directly encoded using the `encoding/binary` package.  For safety you have to assume the largest type (int64) and add extra casting logic when dealing with it.  _This becomes a brand new set of problems when comparing results from the build-in `len()` function._
 
-Because that type is variable in size, for safety we have to assume int64.  This means the size of a byte array takes up 8 bytes before we start writing the array data.
+One particular case to worry about is getting the `len()` of a string after converting it to a byte array, so that we can correctly read the bytes back in from the `ReadStream` entity.  We have to not only assume such a large size, but now we have to store a minimum of 8 bytes for that size.
 
-There are three ways to deal with this problem:
+There are a few ways to deal with this problem:
 
 - arbitrary fixed size restriction to int32 or int16 always
 - add a function per size; eg. `SerializeString32`, `SerializeString16`, etc...
 - accept a max size parameter and use that to efficiently handle length storage as well as errors for over-sized
 
-_The same problem will be encountered when dealing with int properties, which means this problem extends quite a ways._  If we use the `MaxSize` approach, we have a nice clean way to deal with this problem and enforce validation at a much more sane level.
+My solution is to combine the creation of explicit sized integer storage with a maximum size parameter on non-deterministic types such as `string` or `int`.  If a zero value is supplied we assume the maximum, else we work within the boundaries of the supplied size.
 
-The next problem is organization of read and write stream in separate files doesn't line up well with matching tests since it's very difficult to test read and write independently, and we wouldn't want to if we're trying to find bugs with incompatibilities introduced (eg. changing one half's `ByteOrder`).
+**This gives us the benefit of more efficient storage at minimal cost of extra logic, as well as the ability to preemptively filter invalid values on behalf of the user.**
+
+One of the other problems is that the organization of read and write streams doesn't align well with tests, since it's difficult to independently test read from write unless you know how to manually create byte arrays with valid integer and string data.  Additionally attempting to find bugs created by desynchronization between both constructs would be more difficult if tests did not use both entities, such as difference of `ByteOrder` or sizes used.
 
 
 # references
