@@ -21,28 +21,47 @@ For maximum efficiency we deal with pointers to avoid extra memory allocation ov
 
 ## performance
 
-This is my final performance update:
+This update I decided to make some changes to optimize usage and not performance or compression:
 
-- explicitly define uint16 for each stat
+- use `*bytes.Buffer` and add `NewReadStream([]byte)` & `NewWriteStream([]byte)` for simple creation
+- use `init()` in `benchmark_test.go` to print sizes instead of a test function
+- modifying benchmarks to accurately reflect implementation
 
-My hope is that by using deterministic types I can improve performance of both the serialization and `encoding/gob` processes, while shrinking the size further for the `encoding/gob` implementation.  _Skipping past the `MaxSize` logic should shave some time off the processing giving us an optimized `Entity`._
+This modification makes it much easier to create and share state between copies of read and write streams, especially for the UDP use-case where we get a byte array and would like to directly use it when creating a `bytes.Buffer` without consuming more space.  _Perhaps due to less load on my system overall both benchmarks increased in performance, so it appears to have had little to no impact on the streams._
 
-The final benchmarks:
+The second modification had a surprising impact, boosting benchmark performance of the `encoding/gob` package by nearly 300ns per operation.  _I assume this is related to the fact that the first run set the size of the `bytes.Buffer` resulting in better performance, but I'm not entirely sure._
+
+To support a highly concurrent network application we would want a separate encoder/decoder per connection or component, or perhaps even per request.  To avoid large allocations of the same space we would want to directly set a slice of bytes from a channel or mutex-protected `ReadFromUDP()` onto a new `bytes.Buffer` or similar `ReadWriter`.  Clients would distribute messages by system component, and servers would distribute messages by connected client then system component.  _Somehow creating a new `encoding/gob` encoder and decoder per operation results in a dramatic reduction in performance._
+
+Benchmarks with `*bytes.Buffer`:
 
 	$ go test -v -run=X -bench=.
 	PASS
-	BenchmarkSerialize-8	 1000000	      1855 ns/op
-	BenchmarkGob-8      	 1000000	      2262 ns/op
-	ok  	github.com/cdelorme/go-udp-transport	4.173s
+	BenchmarkSerialize-8	 1000000	      1874 ns/op
+	BenchmarkGob-8      	 1000000	      2263 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	4.194s
 
-The final sizes:
+Benchmarks with `init()`:
 
+	$ go test -v -run=X -bench=.
 	Serialized: 18
 	Gobbed: 114
+	PASS
+	BenchmarkSerialize-8	 1000000	      1861 ns/op
+	BenchmarkGob-8      	 1000000	      1987 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	3.899s
 
-As I predicted, the size of the serialization did not change (since we optimized that with `MaxSize` logic previously), but the `encoding/gob` did shrink by a single byte, and the performance still remains over 400~ns faster for the serialization solution.
+Benchmarks with new variables per loop:
 
-**In conclusion, I was able to write a proof-of-concept serialization tool for udp transport following the suggestions by Gaffer's articles, and his advice proved to be true, as just a few days of work is significantly faster and produced much more compact data.**
+	$ go test -v -run=X -bench=.
+	Serialized Bytes: 18
+	Gobbed Bytes:     114
+	PASS
+	BenchmarkSerialize-8	 1000000	      1985 ns/op
+	BenchmarkGob-8      	   30000	     40104 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	3.632s
+
+**Since UDP is not intended to be a stream and because we cannot capture UDP header address information, we cannot directly connect the the streams to the UDP connection, nor the encoding tools.**  The results above further prove that for a high performance application a serialization model that can be initialized in a distributed model with minimal changes to performance is ideal.
 
 
 ## problems
