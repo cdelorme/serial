@@ -24,6 +24,17 @@ func (self *ReadSerial) SerializeString(in *string, maxSize uint64) error {
 	return nil
 }
 
+func (self *ReadSerial) SerializeBool(in *bool) error {
+	var t uint8
+	if e := self.SerializeUint8(&t); e != nil {
+		return e
+	}
+	if t == 1 {
+		*in = true
+	}
+	return nil
+}
+
 func (self *ReadSerial) SerializeInt(in *int, maxSize int64) error {
 	switch {
 	case maxSize == 0 || maxSize > int64(MaxInt32):

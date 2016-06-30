@@ -19,6 +19,14 @@ func (self *WriteSerial) SerializeString(out *string, maxSize uint64) error {
 	return binary.Write(self, ByteOrder, b)
 }
 
+func (self *WriteSerial) SerializeBool(out *bool) error {
+	var t uint8
+	if *out {
+		t = 1
+	}
+	return self.SerializeUint8(&t)
+}
+
 func (self *WriteSerial) SerializeInt(out *int, maxSize int64) error {
 	l := int64(*out)
 

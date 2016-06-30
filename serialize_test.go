@@ -65,6 +65,39 @@ func TestSerialString(t *testing.T) {
 	}
 }
 
+func TestSerialBool(t *testing.T) {
+	t.Parallel()
+	var o, i bool
+	var b bytes.Buffer
+	r, w := ReadSerial{&b}, WriteSerial{&b}
+
+	// test read empty
+	if e := r.SerializeBool(&i); e == nil {
+		t.FailNow()
+	}
+
+	// test write false
+	if e := w.SerializeBool(&o); e != nil {
+		t.FailNow()
+	}
+
+	// test read false
+	if e := r.SerializeBool(&i); e != nil || i {
+		t.FailNow()
+	}
+
+	// test write true
+	o = true
+	if e := w.SerializeBool(&o); e != nil {
+		t.FailNow()
+	}
+
+	// test read true
+	if e := r.SerializeBool(&i); e != nil || !i {
+		t.FailNow()
+	}
+}
+
 func TestSerialInt(t *testing.T) {
 	t.Parallel()
 	var o, i int

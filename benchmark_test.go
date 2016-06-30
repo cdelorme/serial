@@ -11,7 +11,7 @@ const MaxSizeName uint64 = 255
 
 type Serializer interface {
 	SerializeString(*string, uint64) error
-	SerializeInt(*int, int64) error
+	SerializeBool(*bool) error
 	SerializeUint16(*uint16) error
 }
 
@@ -20,6 +20,7 @@ type Entity struct {
 	Health  [2]uint16
 	Mana    [2]uint16
 	Stamina [2]uint16
+	Dead    bool
 }
 
 func (self *Entity) Serialize(s Serializer) error {
@@ -42,6 +43,9 @@ func (self *Entity) Serialize(s Serializer) error {
 		return e
 	}
 	if e := s.SerializeUint16(&self.Stamina[1]); e != nil {
+		return e
+	}
+	if e := s.SerializeBool(&self.Dead); e != nil {
 		return e
 	}
 	return nil
@@ -74,13 +78,13 @@ func TestEntity(t *testing.T) {
 	r, w := &ReadSerial{Buffer: &bytes.Buffer{}}, &WriteSerial{Buffer: &b}
 
 	// serialize data to write serial
-	if err := o.Serialize(w); err != nil || w.Len() == 0 {
+	if e := o.Serialize(w); e != nil || w.Len() == 0 {
 		t.FailNow()
 	}
 
 	// force error with invalid data
 	r.Write(w.Bytes()[:8])
-	if err := i.Serialize(r); err == nil {
+	if e := i.Serialize(r); e == nil {
 		t.FailNow()
 	}
 
@@ -95,7 +99,7 @@ func TestEntity(t *testing.T) {
 
 	// de-serialize from read serial using previous write serial's data
 	r.Buffer = w.Buffer
-	if err := i.Serialize(r); err != nil || i.Name != name {
+	if e := i.Serialize(r); e != nil || i.Name != name {
 		t.FailNow()
 	}
 }
