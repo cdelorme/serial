@@ -7,21 +7,21 @@ import (
 
 func TestPlacebo(_ *testing.T) {}
 
-func TestNewStream(t *testing.T) {
+func TestNewSerials(t *testing.T) {
 	t.Parallel()
-	if r := NewReadStream(nil); r == nil {
+	if r := NewReadSerial(nil); r == nil {
 		t.FailNow()
 	}
-	if w := NewWriteStream(nil); w == nil {
+	if w := NewWriteSerial(nil); w == nil {
 		t.FailNow()
 	}
 }
 
-func TestStreamString(t *testing.T) {
+func TestSerialString(t *testing.T) {
 	t.Parallel()
 	var o, i string = "bananas", ""
 	var b bytes.Buffer
-	r, w := &ReadStream{&bytes.Buffer{}}, &WriteStream{&b}
+	r, w := &ReadSerial{&bytes.Buffer{}}, &WriteSerial{&b}
 
 	// test decode empty data
 	if e := r.SerializeString(&i, 0); e == nil {
@@ -65,11 +65,11 @@ func TestStreamString(t *testing.T) {
 	}
 }
 
-func TestStreamInt(t *testing.T) {
+func TestSerialInt(t *testing.T) {
 	t.Parallel()
 	var o, i int
 	var b bytes.Buffer
-	r, w := ReadStream{&bytes.Buffer{}}, WriteStream{&b}
+	r, w := ReadSerial{&bytes.Buffer{}}, WriteSerial{&b}
 
 	// test read int64 no data
 	if e := r.SerializeInt(&i, MaxInt64); e == nil {
@@ -176,11 +176,11 @@ func TestStreamInt(t *testing.T) {
 	}
 }
 
-func TestStreamUint(t *testing.T) {
+func TestSerialUint(t *testing.T) {
 	t.Parallel()
 	var o, i uint
 	var b bytes.Buffer
-	r, w := ReadStream{&bytes.Buffer{}}, WriteStream{&b}
+	r, w := ReadSerial{&bytes.Buffer{}}, WriteSerial{&b}
 
 	// test read uint64 no data
 	if e := r.SerializeUint(&i, MaxUint64); e == nil {
@@ -284,11 +284,11 @@ func TestStreamUint(t *testing.T) {
 	}
 }
 
-func TestStreamInt8(t *testing.T) {
+func TestSerialInt8(t *testing.T) {
 	t.Parallel()
 	var o, i int8 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeInt8(&i); e == nil {
 		t.FailNow()
@@ -303,11 +303,11 @@ func TestStreamInt8(t *testing.T) {
 	}
 }
 
-func TestStreamInt16(t *testing.T) {
+func TestSerialInt16(t *testing.T) {
 	t.Parallel()
 	var o, i int16 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeInt16(&i); e == nil {
 		t.FailNow()
@@ -322,11 +322,11 @@ func TestStreamInt16(t *testing.T) {
 	}
 }
 
-func TestStreamInt32(t *testing.T) {
+func TestSerialInt32(t *testing.T) {
 	t.Parallel()
 	var o, i int32 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeInt32(&i); e == nil {
 		t.FailNow()
@@ -341,11 +341,11 @@ func TestStreamInt32(t *testing.T) {
 	}
 }
 
-func TestStreamInt64(t *testing.T) {
+func TestSerialInt64(t *testing.T) {
 	t.Parallel()
 	var o, i int64 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeInt64(&i); e == nil {
 		t.FailNow()
@@ -360,11 +360,11 @@ func TestStreamInt64(t *testing.T) {
 	}
 }
 
-func TestStreamUint8(t *testing.T) {
+func TestSerialUint8(t *testing.T) {
 	t.Parallel()
 	var o, i uint8 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeUint8(&i); e == nil {
 		t.FailNow()
@@ -379,11 +379,11 @@ func TestStreamUint8(t *testing.T) {
 	}
 }
 
-func TestStreamUint16(t *testing.T) {
+func TestSerialUint16(t *testing.T) {
 	t.Parallel()
 	var o, i uint16 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeUint16(&i); e == nil {
 		t.FailNow()
@@ -398,11 +398,11 @@ func TestStreamUint16(t *testing.T) {
 	}
 }
 
-func TestStreamUint32(t *testing.T) {
+func TestSerialUint32(t *testing.T) {
 	t.Parallel()
 	var o, i uint32 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeUint32(&i); e == nil {
 		t.FailNow()
@@ -417,11 +417,11 @@ func TestStreamUint32(t *testing.T) {
 	}
 }
 
-func TestStreamUint64(t *testing.T) {
+func TestSerialUint64(t *testing.T) {
 	t.Parallel()
 	var o, i uint64 = 12, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeUint64(&i); e == nil {
 		t.FailNow()
@@ -436,11 +436,11 @@ func TestStreamUint64(t *testing.T) {
 	}
 }
 
-func TestStreamFloat32(t *testing.T) {
+func TestSerialFloat32(t *testing.T) {
 	t.Parallel()
 	var o, i float32 = 12.3, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeFloat32(&i); e == nil {
 		t.FailNow()
@@ -455,11 +455,11 @@ func TestStreamFloat32(t *testing.T) {
 	}
 }
 
-func TestStreamFloat64(t *testing.T) {
+func TestSerialFloat64(t *testing.T) {
 	t.Parallel()
 	var o, i float64 = 12.3, 0
 	var b bytes.Buffer
-	r, w := &ReadStream{&b}, &WriteStream{&b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
 	if e := r.SerializeFloat64(&i); e == nil {
 		t.FailNow()

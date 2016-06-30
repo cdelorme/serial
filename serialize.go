@@ -16,18 +16,12 @@ const MaxInt16 = int16(MaxUint16 >> 1)
 const MaxInt32 = int32(MaxUint32 >> 1)
 const MaxInt64 = int64(MaxUint64 >> 1)
 
-type Stream interface {
-	SerializeString(*string, uint64) error
-	SerializeInt(*int, int64) error
-	SerializeUint16(*uint16) error
+func NewReadSerial(buf []byte) *ReadSerial {
+	return &ReadSerial{bytes.NewBuffer(buf)}
 }
 
-func NewReadStream(buf []byte) *ReadStream {
-	return &ReadStream{bytes.NewBuffer(buf)}
-}
-
-func NewWriteStream(buf []byte) *WriteStream {
-	return &WriteStream{bytes.NewBuffer(buf)}
+func NewWriteSerial(buf []byte) *WriteSerial {
+	return &WriteSerial{bytes.NewBuffer(buf)}
 }
 
 var ByteOrder = binary.LittleEndian

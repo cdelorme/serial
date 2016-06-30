@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 )
 
-type ReadStream struct {
+type ReadSerial struct {
 	*bytes.Buffer
 }
 
-func (self *ReadStream) SerializeString(in *string, maxSize uint64) error {
+func (self *ReadSerial) SerializeString(in *string, maxSize uint64) error {
 	var l uint
 	if e := self.SerializeUint(&l, maxSize); e != nil {
 		return e
@@ -24,7 +24,7 @@ func (self *ReadStream) SerializeString(in *string, maxSize uint64) error {
 	return nil
 }
 
-func (self *ReadStream) SerializeInt(in *int, maxSize int64) error {
+func (self *ReadSerial) SerializeInt(in *int, maxSize int64) error {
 	switch {
 	case maxSize == 0 || maxSize > int64(MaxInt32):
 		var l int64
@@ -67,7 +67,7 @@ func (self *ReadStream) SerializeInt(in *int, maxSize int64) error {
 	return nil
 }
 
-func (self *ReadStream) SerializeUint(in *uint, maxSize uint64) error {
+func (self *ReadSerial) SerializeUint(in *uint, maxSize uint64) error {
 	switch {
 	case maxSize == 0 || maxSize > uint64(MaxUint32):
 		var l uint64
@@ -110,42 +110,42 @@ func (self *ReadStream) SerializeUint(in *uint, maxSize uint64) error {
 	return nil
 }
 
-func (self *ReadStream) SerializeInt8(in *int8) error {
+func (self *ReadSerial) SerializeInt8(in *int8) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeInt16(in *int16) error {
+func (self *ReadSerial) SerializeInt16(in *int16) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeInt32(in *int32) error {
+func (self *ReadSerial) SerializeInt32(in *int32) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeInt64(in *int64) error {
+func (self *ReadSerial) SerializeInt64(in *int64) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeUint8(in *uint8) error {
+func (self *ReadSerial) SerializeUint8(in *uint8) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeUint16(in *uint16) error {
+func (self *ReadSerial) SerializeUint16(in *uint16) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeUint32(in *uint32) error {
+func (self *ReadSerial) SerializeUint32(in *uint32) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeUint64(in *uint64) error {
+func (self *ReadSerial) SerializeUint64(in *uint64) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeFloat32(in *float32) error {
+func (self *ReadSerial) SerializeFloat32(in *float32) error {
 	return binary.Read(self, ByteOrder, in)
 }
 
-func (self *ReadStream) SerializeFloat64(in *float64) error {
+func (self *ReadSerial) SerializeFloat64(in *float64) error {
 	return binary.Read(self, ByteOrder, in)
 }

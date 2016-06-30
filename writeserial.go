@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 )
 
-type WriteStream struct {
+type WriteSerial struct {
 	*bytes.Buffer
 }
 
-func (self *WriteStream) SerializeString(out *string, maxSize uint64) error {
+func (self *WriteSerial) SerializeString(out *string, maxSize uint64) error {
 	b := []byte(*out)
 	l := uint(len(b))
 
@@ -19,7 +19,7 @@ func (self *WriteStream) SerializeString(out *string, maxSize uint64) error {
 	return binary.Write(self, ByteOrder, b)
 }
 
-func (self *WriteStream) SerializeInt(out *int, maxSize int64) error {
+func (self *WriteSerial) SerializeInt(out *int, maxSize int64) error {
 	l := int64(*out)
 
 	if maxSize != 0 && l > maxSize {
@@ -41,7 +41,7 @@ func (self *WriteStream) SerializeInt(out *int, maxSize int64) error {
 	}
 }
 
-func (self *WriteStream) SerializeUint(out *uint, maxSize uint64) error {
+func (self *WriteSerial) SerializeUint(out *uint, maxSize uint64) error {
 	l := uint64(*out)
 
 	if maxSize > 0 && l > maxSize {
@@ -63,42 +63,42 @@ func (self *WriteStream) SerializeUint(out *uint, maxSize uint64) error {
 	}
 }
 
-func (self *WriteStream) SerializeInt8(out *int8) error {
+func (self *WriteSerial) SerializeInt8(out *int8) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeInt16(out *int16) error {
+func (self *WriteSerial) SerializeInt16(out *int16) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeInt32(out *int32) error {
+func (self *WriteSerial) SerializeInt32(out *int32) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeInt64(out *int64) error {
+func (self *WriteSerial) SerializeInt64(out *int64) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeUint8(out *uint8) error {
+func (self *WriteSerial) SerializeUint8(out *uint8) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeUint16(out *uint16) error {
+func (self *WriteSerial) SerializeUint16(out *uint16) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeUint32(out *uint32) error {
+func (self *WriteSerial) SerializeUint32(out *uint32) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeUint64(out *uint64) error {
+func (self *WriteSerial) SerializeUint64(out *uint64) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeFloat32(out *float32) error {
+func (self *WriteSerial) SerializeFloat32(out *float32) error {
 	return binary.Write(self, ByteOrder, *out)
 }
 
-func (self *WriteStream) SerializeFloat64(out *float64) error {
+func (self *WriteSerial) SerializeFloat64(out *float64) error {
 	return binary.Write(self, ByteOrder, *out)
 }
