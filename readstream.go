@@ -6,7 +6,7 @@ import (
 )
 
 type ReadStream struct {
-	bytes.Buffer
+	*bytes.Buffer
 }
 
 func (self *ReadStream) SerializeString(in *string, maxSize uint64) error {

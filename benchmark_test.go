@@ -3,6 +3,7 @@ package transport
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"testing"
 )
 
@@ -13,35 +14,35 @@ var benchEntity = Entity{
 	Stamina: [2]uint16{75, 75},
 }
 
-var benchReader = &ReadStream{}
-var benchWriter = &WriteStream{}
-
-var network bytes.Buffer
-var enc = gob.NewEncoder(&network)
-var dec = gob.NewDecoder(&network)
-
-func TestSizes(t *testing.T) {
+func init() {
+	var sn bytes.Buffer
+	benchWriter := &WriteStream{&sn}
 	benchEntity.Serialize(benchWriter)
-	t.Logf("Serialized: %d\n", benchWriter.Len())
-	benchWriter.Reset()
+	fmt.Printf("Serialized Bytes: %d\n", benchWriter.Len())
 
+	var en bytes.Buffer
+	enc := gob.NewEncoder(&en)
 	enc.Encode(benchEntity)
-	t.Logf("Gobbed: %d\n", len(network.Bytes()))
-	network.Reset()
+	fmt.Printf("Gobbed Bytes:     %d\n", len(en.Bytes()))
 }
 
 func BenchmarkSerialize(b *testing.B) {
 	for i := 0; i < b.N; i++ {
+		var network bytes.Buffer
+		benchReader := &ReadStream{&network}
+		benchWriter := &WriteStream{&network}
+
 		benchEntity.Serialize(benchWriter)
-		benchReader.Write(benchWriter.Bytes())
 		benchEntity.Serialize(benchReader)
-		benchWriter.Reset()
-		benchReader.Reset()
 	}
 }
 
 func BenchmarkGob(b *testing.B) {
 	for i := 0; i < b.N; i++ {
+		var network bytes.Buffer
+		enc := gob.NewEncoder(&network)
+		dec := gob.NewDecoder(&network)
+
 		enc.Encode(benchEntity)
 		dec.Decode(&benchEntity)
 	}

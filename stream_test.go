@@ -1,47 +1,53 @@
 package transport
 
 import (
+	"bytes"
 	"testing"
 )
 
-func TestStreamString(t *testing.T) {
-	t.Parallel()
-	out := "bananas"
+func TestPlacebo(_ *testing.T) {}
 
-	// test encoding (default)
-	w := WriteStream{}
-	if e := w.SerializeString(&out, 0); e != nil || w.Len() == 0 {
+func TestNewStream(t *testing.T) {
+	t.Parallel()
+	if r := NewReadStream(nil); r == nil {
 		t.FailNow()
 	}
+	if w := NewWriteStream(nil); w == nil {
+		t.FailNow()
+	}
+}
 
-	// test optimized encoding
-	ow := WriteStream{}
-	if e := ow.SerializeString(&out, 255); e != nil || w.Len() <= ow.Len() {
+func TestStreamString(t *testing.T) {
+	t.Parallel()
+	var o, i string = "bananas", ""
+	var b bytes.Buffer
+	r, w := &ReadStream{&bytes.Buffer{}}, &WriteStream{&b}
+
+	// test decode empty data
+	if e := r.SerializeString(&i, 0); e == nil {
 		t.FailNow()
 	}
 
 	// test max length safety
-	if e := ow.SerializeString(&out, 2); e == nil {
+	if e := w.SerializeString(&o, 2); e == nil {
 		t.FailNow()
 	}
 
-	// test decode empty error
-	var in string
-	r := ReadStream{}
-	if e := r.SerializeString(&in, 0); e == nil {
+	// test encoding (default)
+	if e := w.SerializeString(&o, 0); e != nil || w.Len() == 0 {
 		t.FailNow()
 	}
+	l := w.Len()
 
-	// test decode partial error
-	r.Reset()
+	// // test decode partial error
 	r.Write(w.Bytes()[:8])
-	if e := r.SerializeString(&in, 0); e == nil {
+	if e := r.SerializeString(&i, 0); e == nil {
 		t.FailNow()
 	}
 
 	// test full decode
 	r.Buffer = w.Buffer
-	if e := r.SerializeString(&in, 0); e != nil || out != in {
+	if e := r.SerializeString(&i, 0); e != nil || o != i {
 		t.FailNow()
 	}
 
@@ -51,12 +57,19 @@ func TestStreamString(t *testing.T) {
 	if e := w.SerializeString(&g, 0); e != nil || w.Len() == 0 {
 		t.FailNow()
 	}
+
+	// test optimized encoding
+	w.Reset()
+	if e := w.SerializeString(&o, 255); e != nil || w.Len() >= l {
+		t.FailNow()
+	}
 }
 
 func TestStreamInt(t *testing.T) {
 	t.Parallel()
-	r, w := ReadStream{}, WriteStream{}
 	var o, i int
+	var b bytes.Buffer
+	r, w := ReadStream{&bytes.Buffer{}}, WriteStream{&b}
 
 	// test read int64 no data
 	if e := r.SerializeInt(&i, MaxInt64); e == nil {
@@ -92,13 +105,15 @@ func TestStreamInt(t *testing.T) {
 	}
 
 	// test read int64 exceeds max
-	r.Buffer = w.Buffer
+	// r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, MaxInt64-2); e == nil {
 		t.FailNow()
 	}
 
-	// test read int64
-	r.Buffer = w.Buffer
+	// fails here, shared buffer?
+	// r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, MaxInt64); e != nil || i != o {
 		t.FailNow()
 	}
@@ -111,13 +126,13 @@ func TestStreamInt(t *testing.T) {
 	}
 
 	// test read int32 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, int64(MaxInt32-2)); e == nil {
 		t.FailNow()
 	}
 
 	// test read int32
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, int64(MaxInt32)); e != nil {
 		t.FailNow()
 	}
@@ -130,13 +145,13 @@ func TestStreamInt(t *testing.T) {
 	}
 
 	// test read int16 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, int64(MaxInt16-2)); e == nil {
 		t.FailNow()
 	}
 
 	// test read int16
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, int64(MaxInt16)); e != nil {
 		t.FailNow()
 	}
@@ -149,13 +164,13 @@ func TestStreamInt(t *testing.T) {
 	}
 
 	// test read int8 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, int64(MaxInt8-2)); e == nil {
 		t.FailNow()
 	}
 
 	// test read int8
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeInt(&i, int64(MaxInt8)); e != nil {
 		t.FailNow()
 	}
@@ -163,8 +178,9 @@ func TestStreamInt(t *testing.T) {
 
 func TestStreamUint(t *testing.T) {
 	t.Parallel()
-	r, w := ReadStream{}, WriteStream{}
 	var o, i uint
+	var b bytes.Buffer
+	r, w := ReadStream{&bytes.Buffer{}}, WriteStream{&b}
 
 	// test read uint64 no data
 	if e := r.SerializeUint(&i, MaxUint64); e == nil {
@@ -199,13 +215,13 @@ func TestStreamUint(t *testing.T) {
 	}
 
 	// test read uint64 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, MaxUint64-2); e == nil {
 		t.FailNow()
 	}
 
 	// test read uint64
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, MaxUint64); e != nil || i != o {
 		t.FailNow()
 	}
@@ -218,13 +234,13 @@ func TestStreamUint(t *testing.T) {
 	}
 
 	// test read uint32 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, uint64(MaxUint32-2)); e == nil {
 		t.FailNow()
 	}
 
 	// test read uint32
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, uint64(MaxUint32)); e != nil || i != o {
 		t.FailNow()
 	}
@@ -237,13 +253,13 @@ func TestStreamUint(t *testing.T) {
 	}
 
 	// test read uint16 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, uint64(MaxUint16-2)); e == nil {
 		t.FailNow()
 	}
 
 	// test read uint16
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, uint64(MaxUint16)); e != nil || i != o {
 		t.FailNow()
 	}
@@ -256,13 +272,13 @@ func TestStreamUint(t *testing.T) {
 	}
 
 	// test read uint8 exceeds max
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, uint64(MaxUint8-2)); e == nil {
 		t.FailNow()
 	}
 
 	// test read uint8
-	r.Buffer = w.Buffer
+	r.Write(w.Bytes())
 	if e := r.SerializeUint(&i, uint64(MaxUint8)); e != nil || i != o {
 		t.FailNow()
 	}
@@ -270,20 +286,18 @@ func TestStreamUint(t *testing.T) {
 
 func TestStreamInt8(t *testing.T) {
 	t.Parallel()
-	var o int8 = 12
+	var o, i int8 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeInt8(&o); e != nil || w.Len() != 1 {
-		t.FailNow()
-	}
-
-	var i int8
-	r := ReadStream{}
 	if e := r.SerializeInt8(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeInt8(&o); e != nil || w.Len() != 1 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeInt8(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -291,20 +305,18 @@ func TestStreamInt8(t *testing.T) {
 
 func TestStreamInt16(t *testing.T) {
 	t.Parallel()
-	var o int16 = 12
+	var o, i int16 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeInt16(&o); e != nil || w.Len() != 2 {
-		t.FailNow()
-	}
-
-	var i int16
-	r := ReadStream{}
 	if e := r.SerializeInt16(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeInt16(&o); e != nil || w.Len() != 2 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeInt16(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -312,20 +324,18 @@ func TestStreamInt16(t *testing.T) {
 
 func TestStreamInt32(t *testing.T) {
 	t.Parallel()
-	var o int32 = 12
+	var o, i int32 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeInt32(&o); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	var i int32
-	r := ReadStream{}
 	if e := r.SerializeInt32(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeInt32(&o); e != nil || w.Len() != 4 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeInt32(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -333,20 +343,18 @@ func TestStreamInt32(t *testing.T) {
 
 func TestStreamInt64(t *testing.T) {
 	t.Parallel()
-	var o int64 = 12
+	var o, i int64 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeInt64(&o); e != nil || w.Len() != 8 {
-		t.FailNow()
-	}
-
-	var i int64
-	r := ReadStream{}
 	if e := r.SerializeInt64(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeInt64(&o); e != nil || w.Len() != 8 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeInt64(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -354,20 +362,18 @@ func TestStreamInt64(t *testing.T) {
 
 func TestStreamUint8(t *testing.T) {
 	t.Parallel()
-	var o uint8 = 12
+	var o, i uint8 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeUint8(&o); e != nil || w.Len() != 1 {
-		t.FailNow()
-	}
-
-	var i uint8
-	r := ReadStream{}
 	if e := r.SerializeUint8(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeUint8(&o); e != nil || w.Len() != 1 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeUint8(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -375,20 +381,18 @@ func TestStreamUint8(t *testing.T) {
 
 func TestStreamUint16(t *testing.T) {
 	t.Parallel()
-	var o uint16 = 12
+	var o, i uint16 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeUint16(&o); e != nil || w.Len() != 2 {
-		t.FailNow()
-	}
-
-	var i uint16
-	r := ReadStream{}
 	if e := r.SerializeUint16(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeUint16(&o); e != nil || w.Len() != 2 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeUint16(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -396,20 +400,18 @@ func TestStreamUint16(t *testing.T) {
 
 func TestStreamUint32(t *testing.T) {
 	t.Parallel()
-	var o uint32 = 12
+	var o, i uint32 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeUint32(&o); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	var i uint32
-	r := ReadStream{}
 	if e := r.SerializeUint32(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeUint32(&o); e != nil || w.Len() != 4 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeUint32(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -417,20 +419,18 @@ func TestStreamUint32(t *testing.T) {
 
 func TestStreamUint64(t *testing.T) {
 	t.Parallel()
-	var o uint64 = 12
+	var o, i uint64 = 12, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeUint64(&o); e != nil || w.Len() != 8 {
-		t.FailNow()
-	}
-
-	var i uint64
-	r := ReadStream{}
 	if e := r.SerializeUint64(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeUint64(&o); e != nil || w.Len() != 8 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeUint64(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -438,20 +438,18 @@ func TestStreamUint64(t *testing.T) {
 
 func TestStreamFloat32(t *testing.T) {
 	t.Parallel()
-	var o float32 = 12.3
+	var o, i float32 = 12.3, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeFloat32(&o); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	var i float32
-	r := ReadStream{}
 	if e := r.SerializeFloat32(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeFloat32(&o); e != nil || w.Len() != 4 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeFloat32(&i); e != nil || i != o {
 		t.FailNow()
 	}
@@ -459,20 +457,18 @@ func TestStreamFloat32(t *testing.T) {
 
 func TestStreamFloat64(t *testing.T) {
 	t.Parallel()
-	var o float64 = 12.3
+	var o, i float64 = 12.3, 0
+	var b bytes.Buffer
+	r, w := &ReadStream{&b}, &WriteStream{&b}
 
-	w := WriteStream{}
-	if e := w.SerializeFloat64(&o); e != nil || w.Len() != 8 {
-		t.FailNow()
-	}
-
-	var i float64
-	r := ReadStream{}
 	if e := r.SerializeFloat64(&i); e == nil {
 		t.FailNow()
 	}
 
-	r.Buffer = w.Buffer
+	if e := w.SerializeFloat64(&o); e != nil || w.Len() != 8 {
+		t.FailNow()
+	}
+
 	if e := r.SerializeFloat64(&i); e != nil || i != o {
 		t.FailNow()
 	}

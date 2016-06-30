@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 )
@@ -19,6 +20,14 @@ type Stream interface {
 	SerializeString(*string, uint64) error
 	SerializeInt(*int, int64) error
 	SerializeUint16(*uint16) error
+}
+
+func NewReadStream(buf []byte) *ReadStream {
+	return &ReadStream{bytes.NewBuffer(buf)}
+}
+
+func NewWriteStream(buf []byte) *WriteStream {
+	return &WriteStream{bytes.NewBuffer(buf)}
 }
 
 var ByteOrder = binary.LittleEndian
