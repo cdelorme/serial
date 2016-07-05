@@ -118,6 +118,19 @@ This final test reflects an actual expected use case where either new connection
 	BenchmarkGob-8      	   30000	     40104 ns/op
 	ok  	github.com/cdelorme/go-udp-transport	3.632s
 
+**I wanted to point out that the gob package is efficient if implemented correctly,** but that approach conflicts with a UDP pattern where each message is independent and not part of a single stream, and messages would probably be processed concurrently by various parts of the system:
+
+	$ go test -v -run=X -bench=.
+	Serialized Bytes: 19
+	Gobbed Bytes:     123
+	PASS
+	BenchmarkSerialize-8	  500000	      2311 ns/op
+	BenchmarkGobOne-8   	   30000	     45699 ns/op
+	BenchmarkGobTwo-8   	 1000000	      2287 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	5.332s
+
+_In this case we've added a boolean value to our entity, which has increased the `gob/encoding` size while resulting in better performance from that package._  The `gob/encoding` package should not be entirely ruled out, although it may also be faster to run serialization of booleans without code reuse (but I don't plan on tinkering at this point).
+
 
 ## conclusion
 
@@ -133,6 +146,8 @@ My conclusion is that Glenn Fiedler's suggestions and implementation are not onl
 ## future
 
 One such edge-case to consider solving for is embedding byte arrays or arrays of structs in a way that is able to avoid desynchronization.  The current solution would require extra logic to optionally set or load the size of the array being serialized, and for simply storing an existing arbitrary byte array we would have to convert to a string first (which is a bit fugly).
+
+I may also play with optimizing specific functionality without code reuse to try to speed up the code.
 
 
 # references

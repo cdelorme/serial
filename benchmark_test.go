@@ -115,12 +115,27 @@ func BenchmarkSerialize(b *testing.B) {
 	}
 }
 
-func BenchmarkGob(b *testing.B) {
+func BenchmarkGobOne(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var network bytes.Buffer
 		enc := gob.NewEncoder(&network)
 		dec := gob.NewDecoder(&network)
 
+		enc.Encode(benchEntity)
+		dec.Decode(&benchEntity)
+	}
+}
+
+func BenchmarkGobTwo(b *testing.B) {
+	var network bytes.Buffer
+	enc := gob.NewEncoder(&network)
+	dec := gob.NewDecoder(&network)
+
+	// @note: this is not how the encoding system would be implemented
+	// due to concurrency and multiple running systems that would deal
+	// with messages in parallel so we didn't block the pipe, and we
+	// would probably have to create a new "network" ([]byte) per request
+	for i := 0; i < b.N; i++ {
 		enc.Encode(benchEntity)
 		dec.Decode(&benchEntity)
 	}
