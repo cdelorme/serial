@@ -38,6 +38,7 @@ Here are just some of the steps I took to improve the initial design:
 - use `*bytes.Buffer` and add `NewReadStream([]byte)` & `NewWriteStream([]byte)` for simple creation
 - use `init()` in `benchmark_test.go` to print sizes instead of a test function
 - modifying benchmarks to accurately reflect implementation
+- add boolean processing and a second efficient `encoding/gob` benchmark that conflicts with UDP implementation
 
 _The end result is a fully tested and very usable serialization library that takes up a fraction of the space consumed by `encoding/gob`, and fits very nicely into a UDP messaging model, but requires a bit more code to implement._
 
@@ -118,36 +119,36 @@ This final test reflects an actual expected use case where either new connection
 	BenchmarkGob-8      	   30000	     40104 ns/op
 	ok  	github.com/cdelorme/go-udp-transport	3.632s
 
-**I wanted to point out that the gob package is efficient if implemented correctly,** but that approach conflicts with a UDP pattern where each message is independent and not part of a single stream, and messages would probably be processed concurrently by various parts of the system:
+**I wanted to point out that if the gob package is efficient if implemented correctly it performs quite well,** but that approach conflicts with a UDP pattern where each message is independently acquired in a buffer using `ReadFromUDP` and is not compatible with a stream nor is it easy to manage when processing messages concurrently:
 
 	$ go test -v -run=X -bench=.
 	Serialized Bytes: 19
 	Gobbed Bytes:     123
 	PASS
-	BenchmarkSerialize-8	  500000	      2311 ns/op
-	BenchmarkGobOne-8   	   30000	     45699 ns/op
-	BenchmarkGobTwo-8   	 1000000	      2287 ns/op
-	ok  	github.com/cdelorme/go-udp-transport	5.332s
+	BenchmarkSerialize-8	  500000	      2273 ns/op
+	BenchmarkGobOne-8   	   30000	     40795 ns/op
+	BenchmarkGobTwo-8   	 1000000	      2324 ns/op
+	ok  	github.com/cdelorme/go-udp-transport	5.155s
 
-_In this case we've added a boolean value to our entity, which has increased the `gob/encoding` size while resulting in better performance from that package._  The `gob/encoding` package should not be entirely ruled out, although it may also be faster to run serialization of booleans without code reuse (but I don't plan on tinkering at this point).
+_Both benchmarks vary by around 50~ns which sometimes leads to superior `gob/encoding` performance with the optimized test._
 
 
 ## conclusion
 
-Even if we overlook the implementation details which effect the performance prediction (eg. as reflected in the final benchmarks), we were still able to create a serialization package with minimal effort that greatly exceeded both the alternative and expectation.
+**Since the very first iteration of this project, Glenn Fiedler's suggestion and implementation have proven to be true.**
 
-If we consider the network impact when shrinking from `114` to `18` bytes per object in a message in addition to the best case benchmarks of either solution, it's obvious that the winning scenario leans towards a custom serialization tool.
+The optimized `gob/encoding` performance is great and sometimes 100~ns faster than serialization, but it conflicts with the UDP strategy.  The actual UDP process fills a `[]byte` per `ReadFromUDP()`, which cannot be directly tied to an `io.Writer`.  As a result the strategy for implementing optimized `gob/encoding` in a concurrent message handler would be very complex.
 
-_However, there are still plenty of edge-cases that I have not yet covered with this library._
+I've also spent no time optimizing the serialization strategy, and only 10 days of spare time crafting this package.
 
-My conclusion is that Glenn Fiedler's suggestions and implementation are not only theoretically true but proven true from the very first iteration of this project.  _It may also be worth adding that the first iteration took only 3 hours, and this near-complete iteration roughly a week._
+Finally, because the serialization size is 6 times smaller than `gob/encoding` we can send more data over the network, which is as or sometimes even more valuable than raw encoding speed.
 
 
 ## future
 
-One such edge-case to consider solving for is embedding byte arrays or arrays of structs in a way that is able to avoid desynchronization.  The current solution would require extra logic to optionally set or load the size of the array being serialized, and for simply storing an existing arbitrary byte array we would have to convert to a string first (which is a bit fugly).
+I would like to play around with optimizing specific functionality in place of code reuse.  Skipping function calls may yield improved performance.  This may also involve playing with shared code to optimize paths.
 
-I may also play with optimizing specific functionality without code reuse to try to speed up the code.
+I also have yet to add support for embedded data, such as an unsized array of `struct`.  Specifically we want to avoid desynchronizing the serialization strategy and keep the process symmetrical, which would be difficult to do currently.
 
 
 # references
