@@ -1,5 +1,5 @@
 
-# [go-transport](https://github.com/cdelorme/go-transport)
+# [transport](https://github.com/cdelorme/transport)
 
 This is a library modeled off of a C++ implementation proposed by [Glenn Fiedler's Game Networking Protocol Articles](http://gafferongames.com/2016/05/10/building-a-game-network-protocol/), for efficient data serialization to send over a network using UDP.
 
