@@ -23,32 +23,29 @@ type Entity struct {
 	Dead    bool
 }
 
-func (self *Entity) Serialize(s Serializer) error {
-	if e := s.SerializeString(&self.Name, MaxSizeName); e != nil {
+func (o *Entity) Serialize(s Serializer) error {
+	if e := s.SerializeString(&o.Name, MaxSizeName); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&self.Health[0]); e != nil {
+	if e := s.SerializeUint16(&o.Health[0]); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&self.Health[1]); e != nil {
+	if e := s.SerializeUint16(&o.Health[1]); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&self.Mana[0]); e != nil {
+	if e := s.SerializeUint16(&o.Mana[0]); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&self.Mana[1]); e != nil {
+	if e := s.SerializeUint16(&o.Mana[1]); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&self.Stamina[0]); e != nil {
+	if e := s.SerializeUint16(&o.Stamina[0]); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&self.Stamina[1]); e != nil {
+	if e := s.SerializeUint16(&o.Stamina[1]); e != nil {
 		return e
 	}
-	if e := s.SerializeBool(&self.Dead); e != nil {
-		return e
-	}
-	return nil
+	return s.SerializeBool(&o.Dead)
 }
 
 var benchEntity = Entity{
