@@ -1,154 +1,29 @@
 
-# [transport](https://github.com/cdelorme/transport)
+# [serial](https://github.com/cdelorme/serial)
 
-This is a library modeled off of a C++ implementation proposed by [Glenn Fiedler's Game Networking Protocol Articles](http://gafferongames.com/2016/05/10/building-a-game-network-protocol/), for efficient data serialization to send over a network using UDP.
+This package is a proof-of-concept modeling a general purpose serialization strategy after the articles by [Glenn Fiedler](http://gafferongames.com/2016/05/10/building-a-game-network-protocol/).
 
+It is intended to demonstrate the serialization pattern described, which aims to tightly pack bytes to minimize transport costs in a UDP communication system, while also providing a single function for both read and write to reduce potential for human error when modifications to the structure are made.
 
-## implementation
+The code has seen several revisions, balancing execution performance, convenience, and the smallest byte packing possible while using the [`encoding/binary` package](https://golang.org/pkg/encoding/binary/) in `LittleEndian`.  The latest iteration has traded for convenience at the cost of reduced built-in functionality.  _This is mostly due to the lack of sane alternatives when dealing with variable size types, most especially complex combinations such as maps or unsized slices._
 
-With implicit interfaces in go it is trivial to create two entities that match a single interface for serialization, and perform opposing operations.
+While it can achieve significantly smaller byte sizes than tools like [`encoding/gob`](https://golang.org/pkg/encoding/gob/) or even [`github.com/tinylib/msgp`](https://github.com/tinylib/msgp), it comes at the expense of spending many hours fine-tuning and writing the serialization logic by hand.
 
-To maximize efficiency we will allow for maximum sizes to be supplied when serializing a generic string (eg. a byte array), or generic `int` or `uint` data type.  _This allows us to use the smallest storage size for each type and enforce size checks on read to validate user-defined limits._
-
-Finally we make use of pointers when dealing with all data to reduce allocations in as many places as possible.
-
-
-### problems
-
-During the implementation we ran into problems with `int` and `uint` types, forcing assumption of the largest data type to avoid loss (eg. `int64` and `uint64`).  This is because different architectures end up with varying sizes for these types, and the `encoding/binary` package refused to directly encode/decode them.  We were able to address storage efficiency by asking for a `MaxSize` when dealing with these generic types.
-
-I ended up using `LittleEndian` for the `ByteOrder`, even though network transmission probably switches to `BigEndian`.  _I did try `BigEndian` and it made no noticeable difference in performance from benchmarks._
+This code comes with a full set of unit tests, and the [benchmarks](benchmarks/) have been cleanly separated to create a more well defined example without mixing up code.
 
 
-## design
+## conclusions
 
-My initial design took a naive approach of assuming the largest fixed data sizes (eg. `int64` and `uint64`), and automatically cast types during serialization.
+**With the MTU of only 1500 bytes, every byte counts when trying to create a communication protocol over UDP that does not fragment.**
 
-For comparison I used the `encoding/gob` package, which initially had very similar performance but used more space, except when implemented in the same way that we expect a UDP system to work (where there is a mechanism per goroutine).
+_I have to agree with Glenn Fiedler regarding the fact that the best performance can only be achieved by explicitly defining serialization per structure._
 
-Here are just some of the steps I took to improve the initial design:
-
-- making `ByteOrder` a package variable and comparing `BigEndian` to `LittleEndian`
-- optimizing the `Read()` to grab the whole byte chunk by parameter length
-- attempting to reuse existing `Read()`, `Write()`, and `SerializeInt()`
-- switching to `bytes.Buffer` from custom
-- added functions for deterministic types: float32/64, int8/16/32/64, uint8/16/32/64
-- added `MaxSize` parameter to `SerializeString()`, `SerializeInt()`, and `SerializeUint()`
-- explicitly define uint16 for each stat in the `Entity` struct
-- use `*bytes.Buffer` and add `NewReadStream([]byte)` & `NewWriteStream([]byte)` for simple creation
-- use `init()` in `benchmark_test.go` to print sizes instead of a test function
-- modifying benchmarks to accurately reflect implementation
-- add boolean processing and a second efficient `encoding/gob` benchmark that conflicts with UDP implementation
-
-_The end result is a fully tested and very usable serialization library that takes up a fraction of the space consumed by `encoding/gob`, and fits very nicely into a UDP messaging model, but requires a bit more code to implement._
+However, depending on your use case the [msgp package](https://github.com/tinylib/msgp) offers absolutely stellar performance and very low memory consumption.  It produces results just under 2x the size of manual serialization, _but at zero cognitive overhead._  Using this lets you focus on the other parts of the application, and fits very nicely within the same overall packet-based strategy.
 
 
-### performance
+On the other hand, I cannot recommend the [`encoding/gob` package](https://golang.org/pkg/encoding/gob/).  It consumes significantly more memory, and sometimes upwards of 6x the amount of bytes due to the amount of metadata generated.  Additionally it is more geared towards streaming, and has heavy dependency on a per-instance cache.  _This model conflicts with packet based UDP, and new instances are an order of magnitude slower to parse or write messages._
 
-The first-draft benchmarks:
-
-	$ go test -v -run=X -bench=.
-	PASS
-	BenchmarkSerialize-8	 1000000	      2175 ns/op
-	BenchmarkGob-8      	  500000	      2418 ns/op
-	ok  	github.com/cdelorme/go-transport	3.448s
-
-_This first draft had a size of `115` bytes for `encoding/gob` and `61` bytes when using serialization._
-
-After setting the `ByteOrder` via a package variable, and optimize the `Read()` behavior to do more than one byte at a time:
-
-	$ go test -v -run=X -bench=.
-	PASS
-	BenchmarkSerialize-8	 1000000	      1911 ns/op
-	BenchmarkGob-8      	  500000	      2650 ns/op
-	ok  	github.com/cdelorme/go-transport	4.289s
-
-Switching to a `bytes.Buffer` from custom `Read()` and `Write()` logic and implementing better code reuse:
-
-	$ go test -v -run=X -bench=.
-	PASS
-	BenchmarkSerialize-8	 1000000	      1950 ns/op
-	BenchmarkGob-8      	  500000	      2385 ns/op
-	ok  	github.com/cdelorme/go-transport	4.191s
-
-Adding functions for varying sizes of `int` and `uint`, plus optimizing storage with `MaxSize` settings:
-
-	$ go test -v -run=X -bench=.
-	PASS
-	BenchmarkSerialize-8	 1000000	      2089 ns/op
-	BenchmarkGob-8      	  500000	      2535 ns/op
-	ok  	github.com/cdelorme/go-transport	3.417s
-
-_At this point we dropped the serialization size from `61` to `18` bytes, making it literally smaller than 1/6th of the `encoding/gob` size._
-
-Next I tried optimizing the `Entity` in the test case to use an `int16` directly to reduce logic and expected storage:
-
-	$ go test -v -run=X -bench=.
-	PASS
-	BenchmarkSerialize-8	 1000000	      1855 ns/op
-	BenchmarkGob-8      	 1000000	      2262 ns/op
-	ok  	github.com/cdelorme/go-transport	4.173s
-
-_This dropped the `encoding/gob` package size from `115` bytes to `114` bytes, while our existing serialization size remained at `18` bytes with a significant improvement in speed._
-
-After wwitching to `*bytes.Buffer` to make the system more flexible to the expected UDP model:
-
-	$ go test -v -run=X -bench=.
-	PASS
-	BenchmarkSerialize-8	 1000000	      1874 ns/op
-	BenchmarkGob-8      	 1000000	      2263 ns/op
-	ok  	github.com/cdelorme/go-transport	4.194s
-
-Somehow, moving the sizes to `init()` inside the benchmarks pre-sized the buffer dramatically improving the `encoding/gob` performance:
-
-	$ go test -v -run=X -bench=.
-	Serialized: 18
-	Gobbed: 114
-	PASS
-	BenchmarkSerialize-8	 1000000	      1861 ns/op
-	BenchmarkGob-8      	 1000000	      1987 ns/op
-	ok  	github.com/cdelorme/go-transport	3.899s
-
-This final test reflects an actual expected use case where either new connections at the server or distributed components in a system would either have a brand new serialization instance or encoding tool, which absolutely destroyed our `encoding/gob` performance while having almost no effect on the serialization implementation:
-
-	$ go test -v -run=X -bench=.
-	Serialized Bytes: 18
-	Gobbed Bytes:     114
-	PASS
-	BenchmarkSerialize-8	 1000000	      1985 ns/op
-	BenchmarkGob-8      	   30000	     40104 ns/op
-	ok  	github.com/cdelorme/go-transport	3.632s
-
-**I wanted to point out that if the gob package is efficient if implemented correctly it performs quite well,** but that approach conflicts with a UDP pattern where each message is independently acquired in a buffer using `ReadFromUDP` and is not compatible with a stream nor is it easy to manage when processing messages concurrently:
-
-	$ go test -v -run=X -bench=.
-	Serialized Bytes: 19
-	Gobbed Bytes:     123
-	PASS
-	BenchmarkSerialize-8	  500000	      2273 ns/op
-	BenchmarkGobOne-8   	   30000	     40795 ns/op
-	BenchmarkGobTwo-8   	 1000000	      2324 ns/op
-	ok  	github.com/cdelorme/go-transport	5.155s
-
-_Both benchmarks vary by around 50~ns which sometimes leads to superior `gob/encoding` performance with the optimized test._
-
-
-## conclusion
-
-**Since the very first iteration of this project, Glenn Fiedler's suggestion and implementation have proven to be true.**
-
-The optimized `gob/encoding` performance is great and sometimes 100~ns faster than serialization, but it conflicts with the UDP strategy.  The actual UDP process fills a `[]byte` per `ReadFromUDP()`, which cannot be directly tied to an `io.Writer`.  As a result the strategy for implementing optimized `gob/encoding` in a concurrent message handler would be very complex.
-
-I've also spent no time optimizing the serialization strategy, and only 10 days of spare time crafting this package.
-
-Finally, because the serialization size is 6 times smaller than `gob/encoding` we can send more data over the network, which is as or sometimes even more valuable than raw encoding speed.
-
-
-## future
-
-I would like to play around with optimizing specific functionality in place of code reuse.  Skipping function calls may yield improved performance.  This may also involve playing with shared code to optimize paths.
-
-I also have yet to add support for embedded data, such as an unsized array of `struct`.  Specifically we want to avoid desynchronizing the serialization strategy and keep the process symmetrical, which would be difficult to do currently.
+To summarize, if you want to focus on the rest of your application just use the `msgp` package.  If you get to a point where you need to optimize, it takes very little effort to exchange it for custom serialization.  _However, writing custom serialization is very expensive._  It is best to plan according to your applications needs.
 
 
 # references
