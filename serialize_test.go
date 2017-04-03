@@ -17,492 +17,127 @@ func TestNewSerials(t *testing.T) {
 	}
 }
 
-func TestSerialString(t *testing.T) {
-	t.Parallel()
-	var o, i string = "bananas", ""
-	var b bytes.Buffer
-	r, w := &ReadSerial{&bytes.Buffer{}}, &WriteSerial{&b}
+func TestSerialize(t *testing.T) {
 
-	// test decode empty data
-	if e := r.SerializeString(&i, 0); e == nil {
-		t.FailNow()
-	}
+	// supported types
+	var o8, i8 int8 = -2, 0
+	var o16, i16 int16 = -2, 0
+	var o32, i32 int32 = -2, 0
+	var o64, i64 int64 = -2, 0
+	var uo8, ui8 uint8 = 2, 0
+	var uo16, ui16 uint16 = 2, 0
+	var uo32, ui32 uint32 = 2, 0
+	var uo64, ui64 uint64 = 2, 0
+	var fo32, fi32 float32 = 0.12, 0
+	var fo64, fi64 float64 = 0.12, 0
+	var co64, ci64 complex128 = 0.12, 0
+	var co128, ci128 complex128 = 0.12, 0
+	var ro, ri rune = 'o', 'i'
 
-	// test max length safety
-	if e := w.SerializeString(&o, 2); e == nil {
-		t.FailNow()
-	}
-
-	// test encoding (default)
-	if e := w.SerializeString(&o, 0); e != nil || w.Len() == 0 {
-		t.FailNow()
-	}
-	l := w.Len()
-
-	// // test decode partial error
-	r.Write(w.Bytes()[:8])
-	if e := r.SerializeString(&i, 0); e == nil {
-		t.FailNow()
-	}
-
-	// test full decode
-	r.Buffer = w.Buffer
-	if e := r.SerializeString(&i, 0); e != nil || o != i {
-		t.FailNow()
-	}
-
-	// test write empty string
-	w.Reset()
-	var g string
-	if e := w.SerializeString(&g, 0); e != nil || w.Len() == 0 {
-		t.FailNow()
-	}
-
-	// test optimized encoding
-	w.Reset()
-	if e := w.SerializeString(&o, 255); e != nil || w.Len() >= l {
-		t.FailNow()
-	}
-}
-
-func TestSerialBool(t *testing.T) {
-	t.Parallel()
-	var o, i bool
-	var b bytes.Buffer
-	r, w := ReadSerial{&b}, WriteSerial{&b}
-
-	// test read empty
-	if e := r.SerializeBool(&i); e == nil {
-		t.FailNow()
-	}
-
-	// test write false
-	if e := w.SerializeBool(&o); e != nil {
-		t.FailNow()
-	}
-
-	// test read false
-	if e := r.SerializeBool(&i); e != nil || i {
-		t.FailNow()
-	}
-
-	// test write true
-	o = true
-	if e := w.SerializeBool(&o); e != nil {
-		t.FailNow()
-	}
-
-	// test read true
-	if e := r.SerializeBool(&i); e != nil || !i {
-		t.FailNow()
-	}
-}
-
-func TestSerialInt(t *testing.T) {
-	t.Parallel()
-	var o, i int
-	var b bytes.Buffer
-	r, w := ReadSerial{&bytes.Buffer{}}, WriteSerial{&b}
-
-	// test read int64 no data
-	if e := r.SerializeInt(&i, MaxInt64); e == nil {
-		t.FailNow()
-	}
-
-	// test read int32 no data
-	if e := r.SerializeInt(&i, int64(MaxInt32)); e == nil {
-		t.FailNow()
-	}
-
-	// test read int16 no data
-	if e := r.SerializeInt(&i, int64(MaxInt16)); e == nil {
-		t.FailNow()
-	}
-
-	// test read int8 no data
-	if e := r.SerializeInt(&i, int64(MaxInt8)); e == nil {
-		t.FailNow()
-	}
-
-	// test write exceeds max
-	o = 2
-	if e := w.SerializeInt(&o, 1); e == nil {
-		t.FailNow()
-	}
-
-	// test write int64
-	w.Reset()
-	o = int(MaxInt64 - 1)
-	if e := w.SerializeInt(&o, MaxInt64); e != nil || w.Len() != 8 {
-		t.Failed()
-	}
-
-	// test read int64 exceeds max
-	// r.Buffer = w.Buffer
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, MaxInt64-2); e == nil {
-		t.FailNow()
-	}
-
-	// fails here, shared buffer?
-	// r.Buffer = w.Buffer
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, MaxInt64); e != nil || i != o {
-		t.FailNow()
-	}
-
-	// test write int32
-	w.Reset()
-	o = int(MaxInt32 - 1)
-	if e := w.SerializeInt(&o, int64(MaxInt32)); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	// test read int32 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, int64(MaxInt32-2)); e == nil {
-		t.FailNow()
-	}
-
-	// test read int32
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, int64(MaxInt32)); e != nil {
-		t.FailNow()
-	}
-
-	// test write int16
-	w.Reset()
-	o = int(MaxInt16 - 1)
-	if e := w.SerializeInt(&o, int64(MaxInt16)); e != nil || w.Len() != 2 {
-		t.FailNow()
-	}
-
-	// test read int16 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, int64(MaxInt16-2)); e == nil {
-		t.FailNow()
-	}
-
-	// test read int16
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, int64(MaxInt16)); e != nil {
-		t.FailNow()
-	}
-
-	// test write int8
-	w.Reset()
-	o = int(MaxInt8 - 1)
-	if e := w.SerializeInt(&o, int64(MaxInt8)); e != nil || w.Len() != 1 {
-		t.FailNow()
-	}
-
-	// test read int8 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, int64(MaxInt8-2)); e == nil {
-		t.FailNow()
-	}
-
-	// test read int8
-	r.Write(w.Bytes())
-	if e := r.SerializeInt(&i, int64(MaxInt8)); e != nil {
-		t.FailNow()
-	}
-}
-
-func TestSerialUint(t *testing.T) {
-	t.Parallel()
-	var o, i uint
-	var b bytes.Buffer
-	r, w := ReadSerial{&bytes.Buffer{}}, WriteSerial{&b}
-
-	// test read uint64 no data
-	if e := r.SerializeUint(&i, MaxUint64); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint32 no data
-	if e := r.SerializeUint(&i, uint64(MaxUint32)); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint16 no data
-	if e := r.SerializeUint(&i, uint64(MaxUint16)); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint8 no data
-	if e := r.SerializeUint(&i, uint64(MaxUint8)); e == nil {
-		t.FailNow()
-	}
-
-	// test write exceeds max
-	o = 2
-	if e := w.SerializeUint(&o, 1); e == nil {
-		t.FailNow()
-	}
-
-	// test write uint64
-	o = uint(MaxUint64 - 1)
-	if e := w.SerializeUint(&o, MaxUint64); e != nil {
-		t.Failed()
-	}
-
-	// test read uint64 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, MaxUint64-2); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint64
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, MaxUint64); e != nil || i != o {
-		t.FailNow()
-	}
-
-	// test write uint32
-	w.Reset()
-	o = uint(MaxUint32 - 1)
-	if e := w.SerializeUint(&o, uint64(MaxUint32)); e != nil {
-		t.FailNow()
-	}
-
-	// test read uint32 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, uint64(MaxUint32-2)); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint32
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, uint64(MaxUint32)); e != nil || i != o {
-		t.FailNow()
-	}
-
-	// test write uint16
-	w.Reset()
-	o = uint(MaxUint16 - 1)
-	if e := w.SerializeUint(&o, uint64(MaxUint16)); e != nil {
-		t.FailNow()
-	}
-
-	// test read uint16 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, uint64(MaxUint16-2)); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint16
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, uint64(MaxUint16)); e != nil || i != o {
-		t.FailNow()
-	}
-
-	// test write uint8
-	w.Reset()
-	o = uint(MaxUint8 - 1)
-	if e := w.SerializeUint(&o, uint64(MaxUint8)); e != nil {
-		t.FailNow()
-	}
-
-	// test read uint8 exceeds max
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, uint64(MaxUint8-2)); e == nil {
-		t.FailNow()
-	}
-
-	// test read uint8
-	r.Write(w.Bytes())
-	if e := r.SerializeUint(&i, uint64(MaxUint8)); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialInt8(t *testing.T) {
-	t.Parallel()
-	var o, i int8 = 12, 0
+	// shared buffer and serializers
 	var b bytes.Buffer
 	r, w := &ReadSerial{&b}, &WriteSerial{&b}
 
-	if e := r.SerializeInt8(&i); e == nil {
-		t.FailNow()
+	// ignore emtpy input
+	if e := w.Serialize(); e != nil {
+		t.Error("failed to ignore empty input on write...")
+	}
+	if e := r.Serialize(); e != nil {
+		t.Error("failed to ignore empty input on read...")
 	}
 
-	if e := w.SerializeInt8(&o); e != nil || w.Len() != 1 {
-		t.FailNow()
+	// all successful cases in one shot
+	if e := w.Serialize(
+		&o8,
+		&o16,
+		&o32,
+		&o64,
+		&uo8,
+		&uo16,
+		&uo32,
+		&uo64,
+		&fo32,
+		&fo64,
+		&co64,
+		&co128,
+		&ro,
+	); e != nil {
+		t.Errorf("failed to write: %s\n", e)
+	} else if b.Len() == 0 {
+		t.Error("failed to write bytes and no error was received...")
+	}
+	if e := r.Serialize(
+		&i8,
+		&i16,
+		&i32,
+		&i64,
+		&ui8,
+		&ui16,
+		&ui32,
+		&ui64,
+		&fi32,
+		&fi64,
+		&ci64,
+		&ci128,
+		&ri,
+	); e != nil {
+		t.Errorf("failed to read: %s\n", e)
+	} else {
+		if i8 != o8 {
+			t.Errorf("failed to restore %T value: %v, expected %v", i8, i8, o8)
+		}
+		if i16 != o16 {
+			t.Errorf("failed to restore %T value: %v, expected %v", i16, i16, o16)
+		}
+		if i32 != o32 {
+			t.Errorf("failed to restore %T value: %v, expected %v", i32, i32, o32)
+		}
+		if i64 != o64 {
+			t.Errorf("failed to restore %T value: %v, expected %v", i64, i64, o64)
+		}
+		if ui8 != uo8 {
+			t.Errorf("failed to restore %T value: %v, expected %v", ui8, ui8, uo8)
+		}
+		if ui16 != uo16 {
+			t.Errorf("failed to restore %T value: %v, expected %v", ui16, ui16, uo16)
+		}
+		if ui32 != uo32 {
+			t.Errorf("failed to restore %T value: %v, expected %v", ui32, ui32, uo32)
+		}
+		if ui64 != uo64 {
+			t.Errorf("failed to restore %T value: %v, expected %v", ui64, ui64, uo64)
+		}
+		if fi32 != fo32 {
+			t.Errorf("failed to restore %T value: %v, expected %v", fi32, fi32, fo32)
+		}
+		if fi64 != fo64 {
+			t.Errorf("failed to restore %T value: %v, expected %v", fi64, fi64, fo64)
+		}
+		if ci64 != co64 {
+			t.Errorf("failed to restore %T value: %v, expected %v", ci64, ci64, co64)
+		}
+		if ci128 != co128 {
+			t.Errorf("failed to restore %T value: %v, expected %v", ci128, ci128, co128)
+		}
+		if ri != ro {
+			t.Errorf("failed to restore %T value: %v, expected %v", ri, ri, ro)
+		}
 	}
 
-	if e := r.SerializeInt8(&i); e != nil || i != o {
-		t.FailNow()
+	// failure cases
+	var badString string
+	var badInt int
+	var badUint uint
+	if e := r.Serialize(&badString); e == nil {
+		t.Error("failed to empty read error...")
 	}
-}
-
-func TestSerialInt16(t *testing.T) {
-	t.Parallel()
-	var o, i int16 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeInt16(&i); e == nil {
-		t.FailNow()
+	if e := w.Serialize(&badString); e == nil {
+		t.Error("failed to capture error when writing unfixed data type %T\n", badString)
 	}
-
-	if e := w.SerializeInt16(&o); e != nil || w.Len() != 2 {
-		t.FailNow()
+	if e := w.Serialize(&badInt); e == nil {
+		t.Error("failed to capture error when writing unfixed data type %T\n", badInt)
 	}
-
-	if e := r.SerializeInt16(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialInt32(t *testing.T) {
-	t.Parallel()
-	var o, i int32 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeInt32(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeInt32(&o); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeInt32(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialInt64(t *testing.T) {
-	t.Parallel()
-	var o, i int64 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeInt64(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeInt64(&o); e != nil || w.Len() != 8 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeInt64(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialUint8(t *testing.T) {
-	t.Parallel()
-	var o, i uint8 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeUint8(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeUint8(&o); e != nil || w.Len() != 1 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeUint8(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialUint16(t *testing.T) {
-	t.Parallel()
-	var o, i uint16 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeUint16(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeUint16(&o); e != nil || w.Len() != 2 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeUint16(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialUint32(t *testing.T) {
-	t.Parallel()
-	var o, i uint32 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeUint32(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeUint32(&o); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeUint32(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialUint64(t *testing.T) {
-	t.Parallel()
-	var o, i uint64 = 12, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeUint64(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeUint64(&o); e != nil || w.Len() != 8 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeUint64(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialFloat32(t *testing.T) {
-	t.Parallel()
-	var o, i float32 = 12.3, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeFloat32(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeFloat32(&o); e != nil || w.Len() != 4 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeFloat32(&i); e != nil || i != o {
-		t.FailNow()
-	}
-}
-
-func TestSerialFloat64(t *testing.T) {
-	t.Parallel()
-	var o, i float64 = 12.3, 0
-	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
-
-	if e := r.SerializeFloat64(&i); e == nil {
-		t.FailNow()
-	}
-
-	if e := w.SerializeFloat64(&o); e != nil || w.Len() != 8 {
-		t.FailNow()
-	}
-
-	if e := r.SerializeFloat64(&i); e != nil || i != o {
-		t.FailNow()
+	if e := w.Serialize(&badUint); e == nil {
+		t.Error("failed to capture error when writing unfixed data type %T\n", badUint)
 	}
 }

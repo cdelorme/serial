@@ -7,12 +7,8 @@ import (
 	"testing"
 )
 
-const MaxSizeName uint64 = 255
-
 type Serializer interface {
-	SerializeString(*string, uint64) error
-	SerializeBool(*bool) error
-	SerializeUint16(*uint16) error
+	Serialize(...interface{}) error
 }
 
 type Entity struct {
@@ -24,28 +20,19 @@ type Entity struct {
 }
 
 func (o *Entity) Serialize(s Serializer) error {
-	if e := s.SerializeString(&o.Name, MaxSizeName); e != nil {
+	l := int8(len(o.Name))
+	if e := s.Serialize(&l); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&o.Health[0]); e != nil {
+	b := []byte(o.Name)
+	if int(l) != len(o.Name) {
+		b = make([]byte, l)
+	}
+	if e := s.Serialize(&b); e != nil {
 		return e
 	}
-	if e := s.SerializeUint16(&o.Health[1]); e != nil {
-		return e
-	}
-	if e := s.SerializeUint16(&o.Mana[0]); e != nil {
-		return e
-	}
-	if e := s.SerializeUint16(&o.Mana[1]); e != nil {
-		return e
-	}
-	if e := s.SerializeUint16(&o.Stamina[0]); e != nil {
-		return e
-	}
-	if e := s.SerializeUint16(&o.Stamina[1]); e != nil {
-		return e
-	}
-	return s.SerializeBool(&o.Dead)
+	o.Name = string(b)
+	return s.Serialize(&o.Health, &o.Mana, &o.Stamina, &o.Dead)
 }
 
 var benchEntity = Entity{
@@ -59,79 +46,81 @@ func init() {
 	var sn bytes.Buffer
 	benchWriter := &WriteSerial{&sn}
 	benchEntity.Serialize(benchWriter)
-	fmt.Printf("Serialized Bytes: %d\n", benchWriter.Len())
+	fmt.Printf("Serialized Bytes: %d\n", sn.Len())
 
 	var en bytes.Buffer
 	enc := gob.NewEncoder(&en)
 	enc.Encode(benchEntity)
-	fmt.Printf("Gobbed Bytes:     %d\n", len(en.Bytes()))
+	fmt.Printf("Gobbed Bytes:     %d\n", en.Len())
 }
 
 func TestEntity(t *testing.T) {
-	t.Parallel()
-	name := "Casey"
 	var b bytes.Buffer
-	o, i := Entity{Name: name, Health: [2]uint16{100, 1000}}, Entity{}
-	r, w := &ReadSerial{Buffer: &bytes.Buffer{}}, &WriteSerial{Buffer: &b}
+	r, w := &ReadSerial{&b}, &WriteSerial{&b}
+	o, i := Entity{Name: "Casey", Health: [2]uint16{100, 1000}}, Entity{}
 
-	// serialize data to write serial
-	if e := o.Serialize(w); e != nil || w.Len() == 0 {
-		t.FailNow()
-	}
-
-	// force error with invalid data
-	r.Write(w.Bytes()[:8])
 	if e := i.Serialize(r); e == nil {
-		t.FailNow()
+		t.Error("failed to capture error with no data...")
 	}
-
-	// verify that we never successfully parse partial integers
-	for n := 0; n < w.Len(); n++ {
-		r.Reset()
-		r.Write(w.Bytes()[:n])
-		if e := i.Serialize(r); e == nil {
-			t.FailNow()
+	if e := o.Serialize(w); e != nil || b.Len() == 0 {
+		if e != nil {
+			t.Logf("Error: %s\n", e)
 		}
+		t.Errorf("failed to write structure (%T)...\n", o)
 	}
-
-	// de-serialize from read serial using previous write serial's data
-	r.Buffer = w.Buffer
-	if e := i.Serialize(r); e != nil || i.Name != name {
-		t.FailNow()
+	if e := i.Serialize(r); e != nil || o.Name != i.Name || o.Health[0] != i.Health[0] || o.Health[1] != i.Health[1] {
+		t.Errorf("failed to read structure (%T)...\n", o)
+	}
+	var d bytes.Buffer
+	r.r = &d
+	for n := 0; n < b.Len(); n++ {
+		d.Reset()
+		d.Write(b.Bytes()[:n])
+		if e := i.Serialize(r); e == nil {
+			t.Error("failed to receive error on partial entity data...")
+			break
+		}
 	}
 }
 
-func BenchmarkSerialize(b *testing.B) {
+func BenchmarkSerializePackets(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		var network bytes.Buffer
-		benchReader := &ReadSerial{&network}
-		benchWriter := &WriteSerial{&network}
+		var packet bytes.Buffer
+		benchReader := &ReadSerial{&packet}
+		benchWriter := &WriteSerial{&packet}
 
 		benchEntity.Serialize(benchWriter)
 		benchEntity.Serialize(benchReader)
 	}
 }
 
-func BenchmarkGobOne(b *testing.B) {
+func BenchmarkSerializeStream(b *testing.B) {
+	var network bytes.Buffer
+	benchReader := &ReadSerial{&network}
+	benchWriter := &WriteSerial{&network}
+
 	for i := 0; i < b.N; i++ {
-		var network bytes.Buffer
-		enc := gob.NewEncoder(&network)
-		dec := gob.NewDecoder(&network)
+		benchEntity.Serialize(benchWriter)
+		benchEntity.Serialize(benchReader)
+	}
+}
+
+func BenchmarkGobPackets(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var packet bytes.Buffer
+		enc := gob.NewEncoder(&packet)
+		dec := gob.NewDecoder(&packet)
 
 		enc.Encode(benchEntity)
 		dec.Decode(&benchEntity)
 	}
 }
 
-func BenchmarkGobTwo(b *testing.B) {
+func BenchmarkGobStream(b *testing.B) {
 	var network bytes.Buffer
 	enc := gob.NewEncoder(&network)
 	dec := gob.NewDecoder(&network)
 
-	// @note: this is not how the encoding system would be implemented
-	// due to concurrency and multiple running systems that would deal
-	// with messages in parallel so we didn't block the pipe, and we
-	// would probably have to create a new "network" ([]byte) per request
 	for i := 0; i < b.N; i++ {
 		enc.Encode(benchEntity)
 		dec.Decode(&benchEntity)
