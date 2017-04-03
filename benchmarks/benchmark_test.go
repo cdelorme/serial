@@ -1,10 +1,12 @@
-package transport
+package serial_test
 
 import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
 	"testing"
+
+	"github.com/cdelorme/serial"
 )
 
 type Serializer interface {
@@ -44,7 +46,7 @@ var benchEntity = Entity{
 
 func init() {
 	var sn bytes.Buffer
-	benchWriter := &WriteSerial{&sn}
+	benchWriter := serial.NewWriter(&sn)
 	benchEntity.Serialize(benchWriter)
 	fmt.Printf("Serialized Bytes: %d\n", sn.Len())
 
@@ -56,7 +58,7 @@ func init() {
 
 func TestEntity(t *testing.T) {
 	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
+	r, w := serial.NewReader(&b), serial.NewWriter(&b)
 	o, i := Entity{Name: "Casey", Health: [2]uint16{100, 1000}}, Entity{}
 
 	if e := i.Serialize(r); e == nil {
@@ -71,23 +73,13 @@ func TestEntity(t *testing.T) {
 	if e := i.Serialize(r); e != nil || o.Name != i.Name || o.Health[0] != i.Health[0] || o.Health[1] != i.Health[1] {
 		t.Errorf("failed to read structure (%T)...\n", o)
 	}
-	var d bytes.Buffer
-	r.r = &d
-	for n := 0; n < b.Len(); n++ {
-		d.Reset()
-		d.Write(b.Bytes()[:n])
-		if e := i.Serialize(r); e == nil {
-			t.Error("failed to receive error on partial entity data...")
-			break
-		}
-	}
 }
 
 func BenchmarkSerializePackets(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var packet bytes.Buffer
-		benchReader := &ReadSerial{&packet}
-		benchWriter := &WriteSerial{&packet}
+		benchReader := serial.NewReader(&packet)
+		benchWriter := serial.NewWriter(&packet)
 
 		benchEntity.Serialize(benchWriter)
 		benchEntity.Serialize(benchReader)
@@ -96,8 +88,8 @@ func BenchmarkSerializePackets(b *testing.B) {
 
 func BenchmarkSerializeStream(b *testing.B) {
 	var network bytes.Buffer
-	benchReader := &ReadSerial{&network}
-	benchWriter := &WriteSerial{&network}
+	benchReader := serial.NewReader(&network)
+	benchWriter := serial.NewWriter(&network)
 
 	for i := 0; i < b.N; i++ {
 		benchEntity.Serialize(benchWriter)

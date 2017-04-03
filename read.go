@@ -1,14 +1,14 @@
-package transport
+package serial
 
 import (
 	"encoding/binary"
 )
 
-type ReadSerial struct {
+type Read struct {
 	r Reader
 }
 
-func (r *ReadSerial) Serialize(in ...interface{}) error {
+func (r *Read) Serialize(in ...interface{}) error {
 	for i := range in {
 		if e := binary.Read(r.r, byteOrder, in[i]); e != nil {
 			return e

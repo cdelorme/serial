@@ -1,4 +1,4 @@
-package transport
+package serial
 
 import (
 	"bytes"
@@ -9,10 +9,10 @@ func TestPlacebo(_ *testing.T) {}
 
 func TestNewSerials(t *testing.T) {
 	t.Parallel()
-	if r := NewReadSerial(nil); r == nil {
+	if r := NewReader(nil); r == nil {
 		t.FailNow()
 	}
-	if w := NewWriteSerial(nil); w == nil {
+	if w := NewWriter(nil); w == nil {
 		t.FailNow()
 	}
 }
@@ -36,7 +36,7 @@ func TestSerialize(t *testing.T) {
 
 	// shared buffer and serializers
 	var b bytes.Buffer
-	r, w := &ReadSerial{&b}, &WriteSerial{&b}
+	r, w := &Read{&b}, &Write{&b}
 
 	// ignore emtpy input
 	if e := w.Serialize(); e != nil {
